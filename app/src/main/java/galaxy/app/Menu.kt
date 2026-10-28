@@ -92,7 +92,7 @@ fun GalaxyMenu(
             HorizontalDivider()
             Section("Mode nuit")
             Text(
-                "Galaxy dort et l'écran devient très sombre de ${settings.nightStartHour}h à ${settings.nightEndHour}h.",
+                "Galaxy dort de ${settings.nightStartHour}h à ${settings.nightEndHour}h. L'écran garde la luminosité du téléphone.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             HourStepper("Début", settings.nightStartHour) { onSettingsChange(settings.copy(nightStartHour = it)) }

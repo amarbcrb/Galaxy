@@ -62,15 +62,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
             }
-            LaunchedEffect(state.night) {
-                window.attributes = window.attributes.apply {
-                    screenBrightness = if (state.night) {
-                        NIGHT_BRIGHTNESS
-                    } else {
-                        WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                    }
-                }
-            }
         }
     }
 
@@ -136,10 +127,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
-
-    private companion object {
-        const val NIGHT_BRIGHTNESS = 0.02f
-    }
 }
 
 private val galaxyColors = darkColorScheme(
@@ -167,7 +154,7 @@ private fun GalaxyScreen(controller: GalaxyController) {
     }
 
     val state = controller.state
-    val color = state.emotion.color().copy(alpha = if (state.night) 0.35f else 1f)
+    val color = state.emotion.color()
 
     Box(
         Modifier
@@ -197,7 +184,7 @@ private fun GalaxyScreen(controller: GalaxyController) {
         when (state.overlay) {
             Overlay.CLOCK -> ClockDigits(color)
             Overlay.TIMER -> Digits(formatCountdown(state.timerRemainingMillis ?: 0), color)
-            Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head }, dim = state.night)
+            Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head })
         }
     }
 

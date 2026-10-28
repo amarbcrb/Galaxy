@@ -56,7 +56,7 @@ fun Emotion.color(): Color = Color(Expressions.of(this).color.toInt())
  * its head by [head] (read at draw time, so fast sensor updates only redraw).
  */
 @Composable
-fun Face(emotion: Emotion, look: Look, head: () -> Look, dim: Boolean, modifier: Modifier = Modifier) {
+fun Face(emotion: Emotion, look: Look, head: () -> Look, modifier: Modifier = Modifier) {
     val target = Expressions.of(emotion)
     var from by remember { mutableStateOf(target) }
     var to by remember { mutableStateOf(target) }
@@ -82,7 +82,7 @@ fun Face(emotion: Emotion, look: Look, head: () -> Look, dim: Boolean, modifier:
         val spec = FaceSpec.lerp(from, to, progress.value)
         val t = frameMillis
         val openness = if (emotion == Emotion.ASLEEP) 1f else blinker.openness(t)
-        drawFace(spec, emotion, gazeX, gazeY, head(), openness, t, dim, painter)
+        drawFace(spec, emotion, gazeX, gazeY, head(), openness, t, painter)
     }
 }
 
@@ -94,11 +94,10 @@ private fun DrawScope.drawFace(
     head: Look,
     openness: Float,
     t: Long,
-    dim: Boolean,
     painter: GlowPainter,
 ) {
     val u = min(size.height, size.width / FACE_WIDTH)
-    val color = Color(spec.color.toInt()).copy(alpha = if (dim) 0.35f else 1f)
+    val color = Color(spec.color.toInt())
     // A head turn moves the whole face, brings the eyes closer and makes the far eye narrower.
     val gaze = Offset(gazeX * 0.08f * u + head.x * 0.22f * u, gazeY * 0.06f * u + head.y * 0.12f * u)
     val spacing = EYE_SPACING * (1f - 0.25f * abs(head.x))

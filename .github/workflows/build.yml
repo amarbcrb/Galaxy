@@ -1,0 +1,61 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test Galaxy's brain
+        run: ./gradlew --no-daemon :core:test
+
+      - name: Prepare the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.GALAXY_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/galaxy.keystore"
+            echo "GALAXY_KEYSTORE_FILE=$RUNNER_TEMP/galaxy.keystore" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No GALAXY_KEYSTORE_BASE64 secret: the APK is signed with a temporary key."
+          fi
+
+      - name: Build the APK
+        env:
+          GALAXY_KEYSTORE_PASSWORD: ${{ secrets.GALAXY_KEYSTORE_PASSWORD }}
+          GALAXY_KEY_ALIAS: ${{ secrets.GALAXY_KEY_ALIAS }}
+          GALAXY_KEY_PASSWORD: ${{ secrets.GALAXY_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Rename the APK
+        run: cp app/build/outputs/apk/release/app-release.apk galaxy.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: galaxy-apk
+          path: galaxy.apk
+
+      - name: Publish a release
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Galaxy 1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          files: galaxy.apk
+          make_latest: true

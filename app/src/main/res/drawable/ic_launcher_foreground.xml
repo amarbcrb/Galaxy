@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Galaxy's two eyes: flat-ish top, round bottom. The safe zone is the central 66dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF5CD3FF"
+        android:pathData="M30,44 Q30,41 33,41 L49,41 Q52,41 52,44 L52,52 A11,11 0 0,1 30,52 Z" />
+    <path
+        android:fillColor="#FF5CD3FF"
+        android:pathData="M56,44 Q56,41 59,41 L75,41 Q78,41 78,44 L78,52 A11,11 0 0,1 56,52 Z" />
+</vector>

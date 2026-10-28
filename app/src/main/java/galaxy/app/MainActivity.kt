@@ -246,6 +246,7 @@ private fun GalaxyScreen(controller: GalaxyController) {
             onCancelTimer = controller::cancelTimer,
             onSettingsChange = controller::updateSettings,
             voiceStatus = controller.voiceStatus,
+            voiceError = controller.voiceError,
             onTalk = onTalk,
             onDismiss = { controller.menuOpen = false },
         )

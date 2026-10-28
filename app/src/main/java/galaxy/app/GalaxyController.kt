@@ -47,7 +47,7 @@ class GalaxyController(
     private val speaker = Speaker(activity)
     private val sounds = SoundPlayer()
     private val haptics = Haptics(activity)
-    private val voice = VoiceListener(activity, ::onPhrases) { voiceStatus = it }
+    private val voice = VoiceListener(activity, ::onPhrases, onStatus = { voiceStatus = it }, onErrorCode = { voiceError = it })
     private val camera = FaceCamera(activity, ::onFace)
 
     var state by mutableStateOf(BrainState())
@@ -61,6 +61,8 @@ class GalaxyController(
     var menuOpen by mutableStateOf(false)
     var secretMenuOpen by mutableStateOf(false)
     var voiceStatus by mutableStateOf(VoiceStatus.OFF)
+        private set
+    var voiceError by mutableStateOf<Int?>(null)
         private set
 
     /** The last thing Galaxy heard, shown briefly as a subtitle. */

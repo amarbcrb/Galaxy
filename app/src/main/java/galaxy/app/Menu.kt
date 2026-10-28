@@ -61,6 +61,7 @@ fun GalaxyMenu(
     onCancelTimer: () -> Unit,
     onSettingsChange: (UserSettings) -> Unit,
     voiceStatus: VoiceStatus,
+    voiceError: Int?,
     onTalk: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -121,7 +122,10 @@ fun GalaxyMenu(
             Toggle("Son et voix", settings.soundOn) { onSettingsChange(settings.copy(soundOn = it)) }
             Toggle("Commandes vocales (micro)", settings.voiceOn) { onSettingsChange(settings.copy(voiceOn = it)) }
             if (settings.voiceOn) {
-                Text(voiceStatus.description(), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    voiceStatus.description() + (voiceError?.let { " (erreur $it)" } ?: ""),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
             OutlinedButton(onClick = onTalk) { Text("Parler à Galaxy") }
             Toggle("Me suivre des yeux (caméra)", settings.cameraOn) { onSettingsChange(settings.copy(cameraOn = it)) }

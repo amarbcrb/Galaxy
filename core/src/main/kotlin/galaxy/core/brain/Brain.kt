@@ -22,6 +22,15 @@ sealed interface Event {
     data class Battery(val level: Int, val charging: Boolean) : Event
     data class StartTimer(val durationMillis: Long) : Event
     data object CancelTimer : Event
+
+    /** Show an emotion on request (voice command or hidden menu). */
+    data class Act(val emotion: Emotion) : Event
+    data object Sleep : Event
+    data object Wake : Event
+    data object TellTime : Event
+
+    /** Someone's face appeared in front of the camera after being away. */
+    data object FaceSeen : Event
 }
 
 enum class VibrationPattern { SHORT, ALARM }
@@ -114,6 +123,37 @@ class Brain(
             Event.CancelTimer -> {
                 timerDeadline = null
                 ringingSince = null
+            }
+            is Event.Act -> {
+                ringingSince = null
+                interact(now, out)
+                setMood(now, event.emotion to 3_000)
+                soundOf(event.emotion)?.let { out += Action.PlaySound(it) }
+            }
+            Event.Sleep -> {
+                ringingSince = null
+                if (!asleep) out += Action.PlaySound(SoundCue.YAWN)
+                sleep(SleepReason.IDLE)
+            }
+            Event.Wake -> {
+                val wasAsleep = asleep
+                interact(now, out)
+                if (!wasAsleep) {
+                    setMood(now, Emotion.HAPPY to 2_000)
+                    out += Action.PlaySound(SoundCue.HAPPY)
+                }
+            }
+            Event.TellTime -> {
+                interact(now, out)
+                tellTime(now, out)
+            }
+            Event.FaceSeen -> if (!night) {
+                val wasAsleep = asleep
+                interact(now, out)
+                if (!wasAsleep) {
+                    setMood(now, Emotion.HAPPY to 2_000)
+                    out += Action.PlaySound(SoundCue.HAPPY)
+                }
             }
             Event.FaceDown -> sleep(SleepReason.FACE_DOWN)
             Event.FlatStill -> if (!asleep) sleep(SleepReason.FLAT)
@@ -222,11 +262,7 @@ class Brain(
                     out += Action.PlaySound(SoundCue.SURPRISE)
                 }
             }
-            Event.DoubleTap -> {
-                clockUntil = ms + CLOCK_MILLIS
-                val t = now.dateTime
-                out += Action.Speak(Phrases.time(t.hour, t.minute, t.second))
-            }
+            Event.DoubleTap -> tellTime(now, out)
             Event.LongPress -> {
                 setMood(now, Emotion.LAUGHING to 2_500)
                 out += Action.PlaySound(SoundCue.LAUGH)
@@ -270,6 +306,26 @@ class Brain(
             out += Action.Speak(Phrases.HUNGRY)
             out += Action.PlaySound(SoundCue.HUNGRY)
         }
+    }
+
+    private fun tellTime(now: Moment, out: MutableList<Action>) {
+        clockUntil = now.millis + CLOCK_MILLIS
+        val t = now.dateTime
+        out += Action.Speak(Phrases.time(t.hour, t.minute, t.second))
+    }
+
+    private fun soundOf(emotion: Emotion): SoundCue? = when (emotion) {
+        Emotion.HAPPY -> SoundCue.HAPPY
+        Emotion.LAUGHING -> SoundCue.LAUGH
+        Emotion.SURPRISED -> SoundCue.SURPRISE
+        Emotion.CURIOUS -> SoundCue.CURIOUS
+        Emotion.ANGRY -> SoundCue.ANGRY
+        Emotion.SAD -> SoundCue.SAD
+        Emotion.LOVE -> SoundCue.LOVE
+        Emotion.DIZZY -> SoundCue.DIZZY
+        Emotion.SLEEPY -> SoundCue.YAWN
+        Emotion.HUNGRY -> SoundCue.HUNGRY
+        Emotion.CALM, Emotion.ASLEEP -> null
     }
 
     /** Someone paid attention to Galaxy: wake up if needed and say good morning once a day. */

@@ -11,16 +11,17 @@ data class Look(val x: Float, val y: Float) {
 }
 
 /**
- * Where the eyes look: at the finger when touched, down the slope when the phone is tilted,
- * otherwise wandering around on their own.
+ * Where the eyes look: at the finger when touched, at your face when the camera sees it,
+ * down the slope when the phone is tilted, otherwise wandering around on their own.
  */
 class Gaze(private val random: Random = Random.Default) {
     private var wander = Look.CENTER
     private var nextMoveAt = -1L
 
-    fun target(nowMillis: Long, finger: Look?, tiltX: Float, awake: Boolean): Look {
+    fun target(nowMillis: Long, finger: Look?, face: Look?, tiltX: Float, awake: Boolean): Look {
         if (!awake) return Look.CENTER
-        if (finger != null) return Look(finger.x.coerceIn(-1f, 1f), finger.y.coerceIn(-1f, 1f))
+        if (finger != null) return finger.clamped()
+        if (face != null) return face.clamped()
         if (abs(tiltX) > TILT_THRESHOLD) return Look(tiltX.coerceIn(-1f, 1f), 0f)
 
         if (nowMillis >= nextMoveAt) {
@@ -33,6 +34,8 @@ class Gaze(private val random: Random = Random.Default) {
         }
         return wander
     }
+
+    private fun Look.clamped() = Look(x.coerceIn(-1f, 1f), y.coerceIn(-1f, 1f))
 
     companion object {
         const val TILT_THRESHOLD = 0.25f

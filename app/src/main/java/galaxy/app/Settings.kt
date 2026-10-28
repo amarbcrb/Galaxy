@@ -10,6 +10,8 @@ data class UserSettings(
     val nightStartHour: Int = 22,
     val nightEndHour: Int = 7,
     val soundOn: Boolean = true,
+    val voiceOn: Boolean = true,
+    val cameraOn: Boolean = true,
 ) {
     fun toBrain() = BrainSettings(name = name, nightStartHour = nightStartHour, nightEndHour = nightEndHour)
 }
@@ -23,6 +25,8 @@ class SettingsStore(context: Context) {
         nightStartHour = prefs.getInt(NIGHT_START, 22),
         nightEndHour = prefs.getInt(NIGHT_END, 7),
         soundOn = prefs.getBoolean(SOUND_ON, true),
+        voiceOn = prefs.getBoolean(VOICE_ON, true),
+        cameraOn = prefs.getBoolean(CAMERA_ON, true),
     )
 
     fun save(settings: UserSettings) {
@@ -32,6 +36,8 @@ class SettingsStore(context: Context) {
             .putInt(NIGHT_START, settings.nightStartHour)
             .putInt(NIGHT_END, settings.nightEndHour)
             .putBoolean(SOUND_ON, settings.soundOn)
+            .putBoolean(VOICE_ON, settings.voiceOn)
+            .putBoolean(CAMERA_ON, settings.cameraOn)
             .apply()
     }
 
@@ -41,5 +47,7 @@ class SettingsStore(context: Context) {
         const val NIGHT_START = "night_start"
         const val NIGHT_END = "night_end"
         const val SOUND_ON = "sound_on"
+        const val VOICE_ON = "voice_on"
+        const val CAMERA_ON = "camera_on"
     }
 }

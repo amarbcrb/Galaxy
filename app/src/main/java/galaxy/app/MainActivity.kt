@@ -13,7 +13,9 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -44,7 +46,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        controller = GalaxyController(this)
+        controller = GalaxyController(this, ::displayRotation)
         sensorManager = getSystemService(SensorManager::class.java)
         hideSystemBars()
 
@@ -76,8 +78,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         super.onResume()
         controller.onResume()
         hideSystemBars()
-        sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        for (type in intArrayOf(Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_GYROSCOPE)) {
+            sensorManager.getDefaultSensor(type)?.let {
+                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+            }
         }
         ContextCompat.registerReceiver(
             this,
@@ -101,7 +105,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         val v = event.values
-        controller.onAccelerometer(v[0], v[1], v[2], event.timestamp / 1_000_000, displayRotation())
+        val millis = event.timestamp / 1_000_000
+        when (event.sensor.type) {
+            Sensor.TYPE_ACCELEROMETER -> controller.onAccelerometer(v[0], v[1], v[2], millis)
+            Sensor.TYPE_GYROSCOPE -> controller.onGyroscope(v[0], v[1], millis)
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
@@ -149,6 +157,15 @@ private fun GalaxyScreen(controller: GalaxyController) {
         }
     }
 
+    val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        controller.onPermissionsResult(it)
+    }
+    val settings = controller.settings
+    LaunchedEffect(settings.nameAsked, settings.voiceOn, settings.cameraOn) {
+        val missing = controller.missingPermissions()
+        if (settings.nameAsked && missing.isNotEmpty()) permissions.launch(missing.toTypedArray())
+    }
+
     val state = controller.state
     val color = state.emotion.color().copy(alpha = if (state.night) 0.35f else 1f)
 
@@ -167,6 +184,7 @@ private fun GalaxyScreen(controller: GalaxyController) {
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        controller.onPointers(event.changes.count { it.pressed }, change.uptimeMillis)
                         last = change.position
                         lastTime = change.uptimeMillis
                         if (!change.pressed) break
@@ -179,7 +197,7 @@ private fun GalaxyScreen(controller: GalaxyController) {
         when (state.overlay) {
             Overlay.CLOCK -> ClockDigits(color)
             Overlay.TIMER -> Digits(formatCountdown(state.timerRemainingMillis ?: 0), color)
-            Overlay.NONE -> Face(state.emotion, controller.look, dim = state.night)
+            Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head }, dim = state.night)
         }
     }
 
@@ -192,6 +210,10 @@ private fun GalaxyScreen(controller: GalaxyController) {
             onSettingsChange = controller::updateSettings,
             onDismiss = { controller.menuOpen = false },
         )
+    }
+
+    if (controller.secretMenuOpen) {
+        SecretMenu(onCommand = controller::command, onDismiss = { controller.secretMenuOpen = false })
     }
 
     if (!controller.settings.nameAsked) {

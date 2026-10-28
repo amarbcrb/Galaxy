@@ -271,4 +271,62 @@ class BrainTest {
         brain.settings = BrainSettings(nightStartHour = 0, nightEndHour = 0)
         assertFalse(brain.isNight(LocalDateTime.of(2026, 1, 1, 2, 0)))
     }
+
+    @Test
+    fun actOnCommand() {
+        val actions = send(Event.Act(Emotion.SAD))
+        assertEquals(Emotion.SAD, brain.state.emotion)
+        assertTrue(Action.PlaySound(SoundCue.SAD) in actions)
+        advance(3_100)
+        assertEquals(Emotion.CALM, brain.state.emotion)
+    }
+
+    @Test
+    fun commandWakesHimUpToAct() {
+        send(Event.Sleep)
+        assertTrue(brain.state.asleep)
+        send(Event.Act(Emotion.LAUGHING))
+        assertFalse(brain.state.asleep)
+        assertEquals(Emotion.LAUGHING, brain.state.emotion)
+    }
+
+    @Test
+    fun sleepAndWakeCommands() {
+        send(Event.Sleep)
+        assertTrue(brain.state.asleep)
+        advance(60_000)
+        assertTrue(brain.state.asleep)
+        send(Event.Wake)
+        assertFalse(brain.state.asleep)
+        send(Event.Wake)
+        assertEquals(Emotion.HAPPY, brain.state.emotion)
+    }
+
+    @Test
+    fun tellTimeCommand() {
+        wall = LocalDateTime.of(2026, 10, 28, 9, 5, 0)
+        val actions = send(Event.TellTime)
+        assertEquals(Overlay.CLOCK, brain.state.overlay)
+        assertTrue(Action.Speak("Il est 9 heures 5") in actions)
+    }
+
+    @Test
+    fun happyToSeeYou() {
+        val actions = send(Event.FaceSeen)
+        assertEquals(Emotion.HAPPY, brain.state.emotion)
+        assertTrue(Action.PlaySound(SoundCue.HAPPY) in actions)
+    }
+
+    @Test
+    fun faceWakesHimDuringTheDayButNotAtNight() {
+        advance(Brain.SLEEP_AFTER_MILLIS + 100)
+        send(Event.FaceSeen)
+        assertFalse(brain.state.asleep)
+
+        brain = Brain(BrainSettings(), Random(1))
+        wall = LocalDateTime.of(2026, 10, 28, 23, 0, 0)
+        brain.tick(now())
+        send(Event.FaceSeen)
+        assertTrue(brain.state.asleep)
+    }
 }

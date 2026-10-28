@@ -5,17 +5,19 @@ import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sign
 
-enum class Gesture { TAP, DOUBLE_TAP, LONG_PRESS, PET, SWIPE_UP }
+enum class Gesture { TAP, DOUBLE_TAP, LONG_PRESS, PET, SWIPE_UP, TWO_FINGER_HOLD }
 
 /**
- * Turns raw touch points of a single finger into gestures.
+ * Turns raw touch points into gestures. Positions are those of the first finger.
  *
  * Positions are in pixels, times in milliseconds. Call [onHold] regularly while a finger
- * is down so a long press fires without waiting for the finger to lift.
+ * is down so long presses fire without waiting for the finger to lift, and [onPointerCount]
+ * whenever the number of fingers on the screen may have changed.
  */
 class GestureClassifier(
     private val longPressMillis: Long = 600,
     private val doubleTapMillis: Long = 300,
+    private val twoFingerMillis: Long = 800,
 ) {
     private var width = 1f
     private var height = 1f
@@ -31,6 +33,9 @@ class GestureClassifier(
     private var longPressFired = false
     private val strokeX = Stroke()
     private val strokeY = Stroke()
+    private var multiTouch = false
+    private var twoFingersSince = -1L
+    private var twoFingerFired = false
 
     private var lastTapTime = -1L
     private var lastTapX = 0f
@@ -47,13 +52,26 @@ class GestureClassifier(
         lastY = y
         moved = false
         longPressFired = false
+        multiTouch = false
+        twoFingersSince = -1
+        twoFingerFired = false
         strokeX.reset()
         strokeY.reset()
         return emptyList()
     }
 
+    fun onPointerCount(count: Int, timeMillis: Long) {
+        if (!down) return
+        if (count >= 2) {
+            multiTouch = true
+            if (twoFingersSince < 0) twoFingersSince = timeMillis
+        } else {
+            twoFingersSince = -1
+        }
+    }
+
     fun onMove(x: Float, y: Float, timeMillis: Long): List<Gesture> {
-        if (!down) return emptyList()
+        if (!down || multiTouch) return emptyList()
         val out = mutableListOf<Gesture>()
         if (hypot(x - startX, y - startY) > SLOP * minDim) moved = true
         val threshold = PET_STROKE * minDim
@@ -65,7 +83,13 @@ class GestureClassifier(
     }
 
     fun onHold(timeMillis: Long): List<Gesture> {
-        if (!down || moved || longPressFired) return emptyList()
+        if (!down) return emptyList()
+        if (multiTouch) {
+            if (twoFingerFired || twoFingersSince < 0 || timeMillis - twoFingersSince < twoFingerMillis) return emptyList()
+            twoFingerFired = true
+            return listOf(Gesture.TWO_FINGER_HOLD)
+        }
+        if (moved || longPressFired) return emptyList()
         if (timeMillis - startTime < longPressMillis) return emptyList()
         longPressFired = true
         lastTapTime = -1
@@ -76,9 +100,10 @@ class GestureClassifier(
         if (!down) return emptyList()
         val out = onMove(x, y, timeMillis).toMutableList()
         down = false
+        if (multiTouch) return emptyList()
 
         val rise = startY - y
-        if (rise > SWIPE_UP * height && abs(x - startX) < rise && strokeY.reversals == 0) {
+        if (rise > SWIPE_UP * minDim && abs(x - startX) < rise && strokeY.reversals == 0) {
             return listOf(Gesture.SWIPE_UP)
         }
         if (moved || longPressFired) return out

@@ -58,11 +58,27 @@ class FaceTest {
     @Test
     fun gazeFollowsFingerThenTiltThenWanders() {
         val gaze = Gaze(Random(5))
-        assertEquals(Look(0.5f, -1f), gaze.target(0, Look(0.5f, -2f), 0f, awake = true))
-        assertEquals(Look(-0.8f, 0f), gaze.target(0, null, -0.8f, awake = true))
-        assertEquals(Look.CENTER, gaze.target(0, Look(1f, 1f), 0f, awake = false))
-        val looks = (0L..60_000L step 500).map { gaze.target(it, null, 0f, awake = true) }.toSet()
+        assertEquals(Look(0.5f, -1f), gaze.target(0, Look(0.5f, -2f), Look(0.1f, 0.1f), 0f, awake = true))
+        assertEquals(Look(0.1f, 0.1f), gaze.target(0, null, Look(0.1f, 0.1f), -0.8f, awake = true))
+        assertEquals(Look(-0.8f, 0f), gaze.target(0, null, null, -0.8f, awake = true))
+        assertEquals(Look.CENTER, gaze.target(0, Look(1f, 1f), null, 0f, awake = false))
+        val looks = (0L..60_000L step 500).map { gaze.target(it, null, null, 0f, awake = true) }.toSet()
         assertTrue(looks.size > 3)
         assertTrue(looks.all { it.x in -1f..1f && it.y in -0.6f..0.6f })
+    }
+
+    @Test
+    fun facePresenceSmoothsAndAnnouncesArrivals() {
+        val presence = FacePresence(absenceMillis = 20_000, lostMillis = 1_500)
+        assertTrue(presence.onFrame(Look(0.4f, 0f), 0))
+        assertEquals(Look(0.4f, 0f), presence.look)
+        assertTrue(!presence.onFrame(Look(0f, 0f), 200))
+        assertEquals(0.2f, presence.look!!.x, 1e-6f)
+        presence.onFrame(null, 1_000)
+        assertTrue(presence.look != null)
+        presence.onFrame(null, 2_000)
+        assertEquals(null, presence.look)
+        assertTrue(!presence.onFrame(Look(0f, 0f), 10_000))
+        assertTrue(presence.onFrame(Look(0f, 0f), 40_000))
     }
 }

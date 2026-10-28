@@ -46,11 +46,17 @@ import kotlin.math.sin
 /** Distance of each eye's center from the middle of the screen, in face units. */
 private const val EYE_SPACING = 0.34f
 
+/** How many face units must fit across the screen, so both eyes fit in portrait too. */
+private const val FACE_WIDTH = 1.3f
+
 fun Emotion.color(): Color = Color(Expressions.of(this).color.toInt())
 
-/** Galaxy's animated face. Morphs smoothly between emotions, blinks, and looks at [look]. */
+/**
+ * Galaxy's animated face. Morphs smoothly between emotions, blinks, looks at [look] and turns
+ * its head by [head] (read at draw time, so fast sensor updates only redraw).
+ */
 @Composable
-fun Face(emotion: Emotion, look: Look, dim: Boolean, modifier: Modifier = Modifier) {
+fun Face(emotion: Emotion, look: Look, head: () -> Look, dim: Boolean, modifier: Modifier = Modifier) {
     val target = Expressions.of(emotion)
     var from by remember { mutableStateOf(target) }
     var to by remember { mutableStateOf(target) }
@@ -76,7 +82,7 @@ fun Face(emotion: Emotion, look: Look, dim: Boolean, modifier: Modifier = Modifi
         val spec = FaceSpec.lerp(from, to, progress.value)
         val t = frameMillis
         val openness = if (emotion == Emotion.ASLEEP) 1f else blinker.openness(t)
-        drawFace(spec, emotion, gazeX, gazeY, openness, t, dim, painter)
+        drawFace(spec, emotion, gazeX, gazeY, head(), openness, t, dim, painter)
     }
 }
 
@@ -85,14 +91,17 @@ private fun DrawScope.drawFace(
     emotion: Emotion,
     gazeX: Float,
     gazeY: Float,
+    head: Look,
     openness: Float,
     t: Long,
     dim: Boolean,
     painter: GlowPainter,
 ) {
-    val u = size.minDimension
+    val u = min(size.height, size.width / FACE_WIDTH)
     val color = Color(spec.color.toInt()).copy(alpha = if (dim) 0.35f else 1f)
-    val gaze = Offset(gazeX * 0.08f * u, gazeY * 0.06f * u)
+    // A head turn moves the whole face, brings the eyes closer and makes the far eye narrower.
+    val gaze = Offset(gazeX * 0.08f * u + head.x * 0.22f * u, gazeY * 0.06f * u + head.y * 0.12f * u)
+    val spacing = EYE_SPACING * (1f - 0.25f * abs(head.x))
     val bounce = if (emotion == Emotion.LAUGHING) -abs(sin(t / 120.0)).toFloat() * 0.03f * u else 0f
     val pulse = if (emotion == Emotion.LOVE) 1f + 0.06f * sin(t * 2 * PI / 600).toFloat() else 1f
     val spin = if (emotion == Emotion.DIZZY) (t % 700) / 700.0 * 2 * PI else null
@@ -101,14 +110,15 @@ private fun DrawScope.drawFace(
     for (side in intArrayOf(-1, 1)) {
         val eye = if (side < 0) spec.left else spec.right
         var center = Offset(
-            size.width / 2 + side * EYE_SPACING * u + eye.offsetX * u,
+            size.width / 2 + side * spacing * u + eye.offsetX * u,
             size.height / 2 + eye.offsetY * u + bounce,
         ) + gaze
         if (spin != null) {
             // Eyes circle in opposite directions.
             center += Offset(cos(side * spin).toFloat(), sin(side * spin).toFloat()) * (0.05f * u)
         }
-        drawEye(center, eye, side, u, color, openness, pulse, painter)
+        val scale = Size(1f - 0.3f * head.x * side, 1f - 0.15f * abs(head.y))
+        drawEye(center, eye, side, u, color, openness, pulse, scale, painter)
         if (side > 0) rightEyeTop = center + Offset(eye.width * u / 2, -eye.height * u / 2)
     }
     if (emotion == Emotion.ASLEEP) drawSnore(rightEyeTop, u, color, t, painter)
@@ -122,10 +132,11 @@ private fun DrawScope.drawEye(
     color: Color,
     openness: Float,
     pulse: Float,
+    scale: Size,
     painter: GlowPainter,
 ) {
-    val w = eye.width * u * pulse
-    val h = eye.height * u * pulse * openness.coerceAtLeast(0.08f)
+    val w = eye.width * u * pulse * scale.width
+    val h = eye.height * u * pulse * scale.height * openness.coerceAtLeast(0.08f)
     val left = c.x - w / 2
     val top = c.y - h / 2
     val margin = 0.08f * u

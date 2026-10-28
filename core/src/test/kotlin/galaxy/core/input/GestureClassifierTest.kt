@@ -91,4 +91,23 @@ class GestureClassifierTest {
         g.onDown(1000f, 900f, 0, w, h)
         assertTrue(g.onUp(1000f, 800f, 100).isEmpty())
     }
+
+    @Test
+    fun twoFingerHoldOpensHiddenMenuAndIsNotATap() {
+        g.onDown(500f, 500f, 0, w, h)
+        g.onPointerCount(2, 50)
+        assertTrue(g.onHold(500).isEmpty())
+        assertEquals(listOf(Gesture.TWO_FINGER_HOLD), g.onHold(900))
+        assertTrue(g.onHold(1_200).isEmpty())
+        assertTrue(g.onUp(500f, 500f, 1_300).isEmpty())
+    }
+
+    @Test
+    fun briefSecondFingerDoesNothing() {
+        g.onDown(500f, 500f, 0, w, h)
+        g.onPointerCount(2, 50)
+        g.onPointerCount(1, 200)
+        assertTrue(g.onHold(1_000).isEmpty())
+        assertTrue(g.onUp(500f, 500f, 1_100).isEmpty())
+    }
 }

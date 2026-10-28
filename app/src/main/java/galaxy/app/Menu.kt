@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import galaxy.core.Emotion
+import galaxy.core.brain.Command
 
 private val TIMER_PRESETS = listOf(1, 3, 5, 10, 15, 30)
 
@@ -97,10 +99,9 @@ fun GalaxyMenu(
             HourStepper("Fin", settings.nightEndHour) { onSettingsChange(settings.copy(nightEndHour = it)) }
 
             HorizontalDivider()
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Son et voix", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                Switch(checked = settings.soundOn, onCheckedChange = { onSettingsChange(settings.copy(soundOn = it)) })
-            }
+            Toggle("Son et voix", settings.soundOn) { onSettingsChange(settings.copy(soundOn = it)) }
+            Toggle("Commandes vocales (micro)", settings.voiceOn) { onSettingsChange(settings.copy(voiceOn = it)) }
+            Toggle("Me suivre des yeux (caméra)", settings.cameraOn) { onSettingsChange(settings.copy(cameraOn = it)) }
 
             HorizontalDivider()
             Section("Comment jouer avec Galaxy")
@@ -111,9 +112,72 @@ fun GalaxyMenu(
                     "Double-tap : il te donne l'heure\n" +
                     "Secouer : il a le tournis\n" +
                     "Poser à plat ou retourner : il s'endort\n" +
+                    "Tourner vite le téléphone : sa tête tourne\n" +
                     "Glisser vers le haut : ce menu",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            Section("Ce qu'il comprend à la voix")
+            Text(
+                "« Dors », « Réveille-toi », « Rigole », « Souris », « Fâche-toi », « Triste », " +
+                    "« Je t'aime », « Surprise », « Tourne », « Tu as faim ? », « Quelle heure est-il ? », " +
+                    "« Minuteur 5 minutes », « Stop »",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+private val SECRET_COMMANDS = listOf(
+    "Dormir" to Command.Sleep,
+    "Réveiller" to Command.Wake,
+    "Rire" to Command.Act(Emotion.LAUGHING),
+    "Content" to Command.Act(Emotion.HAPPY),
+    "Amoureux" to Command.Act(Emotion.LOVE),
+    "Surpris" to Command.Act(Emotion.SURPRISED),
+    "Curieux" to Command.Act(Emotion.CURIOUS),
+    "Fâché" to Command.Act(Emotion.ANGRY),
+    "Triste" to Command.Act(Emotion.SAD),
+    "Tournis" to Command.Act(Emotion.DIZZY),
+    "Faim" to Command.Act(Emotion.HUNGRY),
+    "Fatigué" to Command.Act(Emotion.SLEEPY),
+    "L'heure" to Command.TellTime,
+)
+
+/** Hidden menu (two-finger hold) to make Galaxy do things on demand. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SecretMenu(onCommand: (Command) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Section("Commandes secrètes")
+            SECRET_COMMANDS.chunked(3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { (label, command) ->
+                        FilledTonalButton(onClick = { onCommand(command) }, modifier = Modifier.weight(1f)) {
+                            Text(label, maxLines = 1)
+                        }
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
         }
     }
 }

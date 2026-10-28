@@ -24,6 +24,7 @@ class CommandsTest {
         assertEquals(Command.Act(Emotion.LAUGHING), parse("fais-moi rire"))
         assertEquals(Command.Act(Emotion.LOVE), parse("je t'aime"))
         assertEquals(Command.Act(Emotion.LOVE), parse("fais un câlin"))
+        assertEquals(Command.Act(Emotion.KISS), parse("fais-moi un bisou"))
         assertEquals(Command.Act(Emotion.ANGRY), parse("Fâche-toi"))
         assertEquals(Command.Act(Emotion.SAD), parse("tu es triste ?"))
         assertEquals(Command.Act(Emotion.HAPPY), parse("souris"))

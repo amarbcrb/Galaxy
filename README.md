@@ -39,7 +39,9 @@ L'écran suit l'orientation du téléphone (portrait ou paysage).
   quand tu reviens. Rien n'est affiché ni enregistré.
 
 Galaxy répond avec des bips de robot plutôt qu'avec des mots (réglable dans le menu).
-Quand il est triste, il pleure ; quand il a le tournis, ses yeux tournent en spirale et des étoiles
+Quand il dort, ses yeux sont fermés, il respire doucement et des « Z » s'envolent. « Mains en
+l'air » fait lever ses deux mains de robot ; « Bisou » envoie des petits cœurs. Dans le menu, on
+choisit son émotion par défaut (calme, content, amoureux...). Quand il est triste, il pleure ; quand il a le tournis, ses yeux tournent en spirale et des étoiles
 tournent autour de sa tête.
 
 Les deux s'arrêtent la nuit et se coupent dans le menu. Ce que Galaxy entend s'affiche en bas de

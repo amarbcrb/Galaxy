@@ -62,6 +62,8 @@ data class BrainSettings(
     val name: String = "",
     val nightStartHour: Int = 22,
     val nightEndHour: Int = 7,
+    /** The look Galaxy goes back to when nothing special happens. */
+    val defaultEmotion: Emotion = Emotion.CALM,
 )
 
 data class BrainState(
@@ -405,6 +407,7 @@ class Brain(
         Emotion.SLEEPY -> SoundCue.YAWN
         Emotion.HUNGRY -> SoundCue.HUNGRY
         Emotion.SCARED -> SoundCue.SCARED
+        Emotion.KISS -> SoundCue.KISS
         Emotion.CALM, Emotion.ASLEEP, Emotion.KO -> null
     }
 
@@ -487,7 +490,7 @@ class Brain(
             mood != null -> mood!!
             night -> Emotion.SLEEPY
             hungry -> Emotion.HUNGRY
-            else -> Emotion.CALM
+            else -> settings.defaultEmotion
         }
         val deadline = timerDeadline
         val glancing = (ms - timerStart) % TIMER_GLANCE_CYCLE_MILLIS >= TIMER_GLANCE_CYCLE_MILLIS - TIMER_GLANCE_MILLIS

@@ -38,12 +38,13 @@ object Expressions {
             0xFFFF9F43L,
         )
         Emotion.SLEEPY -> both(base.copy(lidTop = 0.55f), 0xFF8A6CFFL)
-        Emotion.ASLEEP -> both(base.copy(lidTop = 0.9f, offsetY = 0.03f), 0xFF6A4FD9L)
+        Emotion.ASLEEP -> both(base.copy(closed = 1f, offsetY = 0.04f), 0xFF8A6CFFL)
         Emotion.HUNGRY -> both(base.copy(height = 0.30f, lidTop = 0.45f, lidAngle = -10f), 0xFFFFB347L)
         Emotion.SCARED -> both(
             base.copy(width = 0.30f, height = 0.36f, topRound = 1f, bottomRound = 1f, offsetY = -0.03f),
             0xFFE8F4FFL,
         )
+        Emotion.KISS -> both(base.copy(height = 0.28f, lidBottom = 0.62f), 0xFFFF7FBFL)
         Emotion.KO -> both(base.copy(width = 0.34f, height = 0.34f, cross = 1f), 0xFFFFFFFFL)
     }
 }

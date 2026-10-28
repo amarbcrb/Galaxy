@@ -1,6 +1,7 @@
 package galaxy.app
 
 import android.content.Context
+import galaxy.core.Emotion
 import galaxy.core.brain.BrainSettings
 import galaxy.core.brain.Prediction
 
@@ -19,8 +20,15 @@ data class UserSettings(
     val eyeColor: Long? = null,
     /** Magic trick: what Galaxy will "guess". */
     val prediction: Prediction? = null,
+    /** The look Galaxy rests in when nothing special happens. */
+    val defaultEmotion: Emotion = Emotion.CALM,
 ) {
-    fun toBrain() = BrainSettings(name = name, nightStartHour = nightStartHour, nightEndHour = nightEndHour)
+    fun toBrain() = BrainSettings(
+        name = name,
+        nightStartHour = nightStartHour,
+        nightEndHour = nightEndHour,
+        defaultEmotion = defaultEmotion,
+    )
 }
 
 class SettingsStore(context: Context) {
@@ -37,6 +45,8 @@ class SettingsStore(context: Context) {
         cameraOn = prefs.getBoolean(CAMERA_ON, true),
         eyeColor = prefs.getLong(EYE_COLOR, 0L).takeIf { it != 0L },
         prediction = Prediction.decode(prefs.getString(PREDICTION, null)),
+        defaultEmotion = Emotion.entries.firstOrNull { it.name == prefs.getString(DEFAULT_EMOTION, null) }
+            ?: Emotion.CALM,
     )
 
     fun save(settings: UserSettings) {
@@ -51,6 +61,7 @@ class SettingsStore(context: Context) {
             .putBoolean(CAMERA_ON, settings.cameraOn)
             .putLong(EYE_COLOR, settings.eyeColor ?: 0L)
             .putString(PREDICTION, settings.prediction?.encode())
+            .putString(DEFAULT_EMOTION, settings.defaultEmotion.name)
             .apply()
     }
 
@@ -65,5 +76,6 @@ class SettingsStore(context: Context) {
         const val CAMERA_ON = "camera_on"
         const val EYE_COLOR = "eye_color"
         const val PREDICTION = "prediction"
+        const val DEFAULT_EMOTION = "default_emotion"
     }
 }

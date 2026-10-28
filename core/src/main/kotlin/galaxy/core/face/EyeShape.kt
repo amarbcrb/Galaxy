@@ -25,6 +25,8 @@ data class EyeShape(
     val cross: Float = 0f,
     /** 0 = normal eye, 1 = a turning spiral (dizzy). Values between cross-fade. */
     val spiral: Float = 0f,
+    /** 0 = open eye, 1 = a peaceful closed arc (sleeping). Values between cross-fade. */
+    val closed: Float = 0f,
     val offsetX: Float = 0f,
     val offsetY: Float = 0f,
 ) {
@@ -40,6 +42,7 @@ data class EyeShape(
             heart = lerp(a.heart, b.heart, t),
             cross = lerp(a.cross, b.cross, t),
             spiral = lerp(a.spiral, b.spiral, t),
+            closed = lerp(a.closed, b.closed, t),
             offsetX = lerp(a.offsetX, b.offsetX, t),
             offsetY = lerp(a.offsetY, b.offsetY, t),
         )

@@ -49,7 +49,8 @@ object VoiceCommands {
 
     private val moods = listOf(
         Emotion.LAUGHING to Regex("""\b(rigole\w*|ris|rire|marrant|blague)\b"""),
-        Emotion.LOVE to Regex("""\b(amoureux|bisous?|coeurs?|calins?)\b|je t aime"""),
+        Emotion.KISS to Regex("""\b(bisous?|bises?|embrasse\w*|kiss)\b"""),
+        Emotion.LOVE to Regex("""\b(amoureux|coeurs?|calins?)\b|je t aime"""),
         Emotion.HAPPY to Regex("""\b(content|heureux|joyeux|souri\w*)\b"""),
         Emotion.ANGRY to Regex("""\b(fache\w*|colere|enerve\w*)\b"""),
         Emotion.SAD to Regex("""\b(triste|pleure\w*)\b"""),

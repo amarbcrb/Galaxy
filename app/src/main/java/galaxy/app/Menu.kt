@@ -110,6 +110,16 @@ fun GalaxyMenu(
             ColorSwatches(selected = settings.eyeColor) { onSettingsChange(settings.copy(eyeColor = it)) }
 
             HorizontalDivider()
+            Section("Émotion par défaut")
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                DEFAULT_EMOTIONS.forEach { (label, emotion) ->
+                    ChoiceButton(label, selected = settings.defaultEmotion == emotion) {
+                        onSettingsChange(settings.copy(defaultEmotion = emotion))
+                    }
+                }
+            }
+
+            HorizontalDivider()
             Section("Mode nuit")
             Text(
                 "Galaxy dort de ${settings.nightStartHour}h à ${settings.nightEndHour}h. L'écran garde la luminosité du téléphone.",
@@ -150,7 +160,7 @@ fun GalaxyMenu(
             Section("Ce qu'il comprend à la voix")
             Text(
                 "« Dors », « Réveille-toi », « Rigole », « Souris », « Fâche-toi », « Triste », " +
-                    "« Je t'aime », « Surprise », « Tourne », « Tu as faim ? », « Quelle heure est-il ? », " +
+                    "« Je t'aime », « Bisou », « Surprise », « Tourne », « Tu as faim ? », « Quelle heure est-il ? », " +
                     "« Minuteur 5 minutes », « Stop », « Mains en l'air ! » puis « Pan ! », " +
                     "« Change la couleur de tes yeux », « Yeux rouges », « Dis-lui c'est quoi sa carte »",
                 style = MaterialTheme.typography.bodyMedium,
@@ -167,12 +177,29 @@ private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit)
     }
 }
 
+/** Looks Galaxy can rest in, offered in the menu. */
+private val DEFAULT_EMOTIONS = listOf(
+    "Calme" to Emotion.CALM,
+    "Content" to Emotion.HAPPY,
+    "Rieur" to Emotion.LAUGHING,
+    "Amoureux" to Emotion.LOVE,
+    "Bisou" to Emotion.KISS,
+    "Curieux" to Emotion.CURIOUS,
+    "Surpris" to Emotion.SURPRISED,
+    "Fatigué" to Emotion.SLEEPY,
+    "Triste" to Emotion.SAD,
+    "Fâché" to Emotion.ANGRY,
+    "Tournis" to Emotion.DIZZY,
+    "Peur" to Emotion.SCARED,
+)
+
 private val SECRET_COMMANDS = listOf(
     "Dormir" to Command.Sleep,
     "Réveiller" to Command.Wake,
     "Rire" to Command.Act(Emotion.LAUGHING),
     "Content" to Command.Act(Emotion.HAPPY),
     "Amoureux" to Command.Act(Emotion.LOVE),
+    "Bisou" to Command.Act(Emotion.KISS),
     "Surpris" to Command.Act(Emotion.SURPRISED),
     "Curieux" to Command.Act(Emotion.CURIOUS),
     "Fâché" to Command.Act(Emotion.ANGRY),

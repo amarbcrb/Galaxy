@@ -395,4 +395,22 @@ class BrainTest {
         advance(4_000)
         assertNull(brain.state.revealed)
     }
+
+    @Test
+    fun chosenDefaultEmotionIsTheRestingLook() {
+        brain.settings = BrainSettings(defaultEmotion = Emotion.LOVE)
+        advance(100)
+        assertEquals(Emotion.LOVE, brain.state.emotion)
+        send(Event.Tap)
+        assertEquals(Emotion.SURPRISED, brain.state.emotion)
+        advance(1_000)
+        assertEquals(Emotion.LOVE, brain.state.emotion)
+    }
+
+    @Test
+    fun kissCommand() {
+        val actions = send(Event.Act(Emotion.KISS))
+        assertEquals(Emotion.KISS, brain.state.emotion)
+        assertTrue(Action.PlaySound(SoundCue.KISS) in actions)
+    }
 }

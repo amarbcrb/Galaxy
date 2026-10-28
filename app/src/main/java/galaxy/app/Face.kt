@@ -85,12 +85,18 @@ fun Face(
         while (true) withFrameMillis { value = it }
     }
     val painter = remember { GlowPainter() }
+    // Hands come up from below when Galaxy is told "hands up", and go back down after.
+    val hands by animateFloatAsState(
+        if (emotion == Emotion.SCARED) 1f else 0f,
+        spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessLow),
+        label = "hands",
+    )
 
     Canvas(modifier.fillMaxSize()) {
         val spec = FaceSpec.lerp(from, to, progress.value)
         val t = frameMillis
         val openness = if (emotion == Emotion.ASLEEP || emotion == Emotion.KO) 1f else blinker.openness(t)
-        drawFace(spec, emotion, gazeX, gazeY, head(), openness, t, painter)
+        drawFace(spec, emotion, gazeX, gazeY, head(), openness, t, hands, painter)
     }
 }
 
@@ -102,6 +108,7 @@ private fun DrawScope.drawFace(
     head: Look,
     openness: Float,
     t: Long,
+    hands: Float,
     painter: GlowPainter,
 ) {
     val u = min(size.height, size.width / FACE_WIDTH)
@@ -109,7 +116,12 @@ private fun DrawScope.drawFace(
     // A head turn moves the whole face, brings the eyes closer and makes the far eye narrower.
     val gaze = Offset(gazeX * 0.08f * u + head.x * 0.22f * u, gazeY * 0.06f * u + head.y * 0.12f * u)
     val spacing = EYE_SPACING * (1f - 0.25f * abs(head.x))
-    val bounce = if (emotion == Emotion.LAUGHING) -abs(sin(t / 120.0)).toFloat() * 0.03f * u else 0f
+    val bounce = when (emotion) {
+        Emotion.LAUGHING -> -abs(sin(t / 120.0)).toFloat() * 0.03f * u
+        // Asleep: slow breathing.
+        Emotion.ASLEEP -> sin(t / 1_300.0).toFloat() * 0.015f * u
+        else -> 0f
+    }
     val pulse = if (emotion == Emotion.LOVE) 1f + 0.06f * sin(t * 2 * PI / 600).toFloat() else 1f
     // Scared: the whole face trembles. Dizzy: it sways from side to side.
     val shake = when (emotion) {
@@ -135,7 +147,71 @@ private fun DrawScope.drawFace(
         Emotion.ASLEEP -> drawSnore(rightEyeTop, u, color, t, painter)
         Emotion.DIZZY -> drawOrbitingStars(eyes, u, t, painter)
         Emotion.SAD -> drawTears(eyes, u, t, painter)
+        Emotion.KISS -> drawFloatingHearts(eyes, u, t, painter)
         else -> Unit
+    }
+    if (hands > 0.01f) drawHands(eyes, u, t, hands, painter)
+}
+
+private val HAND_COLOR = Color(0xFFE8F4FF)
+private val KISS_COLOR = Color(0xFFFF7FBF)
+
+/** Robot hands raised on both sides of the face, trembling a little. */
+private fun DrawScope.drawHands(eyes: List<Triple<Offset, Float, Float>>, u: Float, t: Long, raised: Float, painter: GlowPainter) {
+    val alpha = raised.coerceIn(0f, 1f)
+    eyes.forEachIndexed { index, (center, halfWidth, _) ->
+        val side = if (index == 0) -1 else 1
+        val palmWidth = 0.15f * u
+        val palmHeight = 0.13f * u
+        val x = (center.x + side * (halfWidth + 0.2f * u)).coerceIn(palmWidth, size.width - palmWidth)
+        val y = center.y - 0.04f * u + (1f - raised) * 0.9f * u + sin(t / 45.0 + index).toFloat() * 0.006f * u
+        val palm = Offset(x - palmWidth / 2, y - palmHeight / 2)
+        val glowPath = Path().apply {
+            addRoundRect(RoundRect(palm.x, palm.y, palm.x + palmWidth, palm.y + palmHeight, CornerRadius(0.04f * u)))
+        }
+        painter.glow(this, glowPath, HAND_COLOR, alpha, u)
+        drawRoundRect(HAND_COLOR.copy(alpha = alpha), palm, Size(palmWidth, palmHeight), CornerRadius(0.04f * u))
+        // Four fingers, slightly fanned out.
+        val fingerWidth = 0.03f * u
+        val fingerHeight = 0.085f * u
+        for (f in 0 until 4) {
+            val fx = palm.x + palmWidth * (0.14f + f * 0.24f)
+            rotate(degrees = (f - 1.5f) * 6f, pivot = Offset(fx, palm.y + 0.01f * u)) {
+                drawRoundRect(
+                    HAND_COLOR.copy(alpha = alpha),
+                    Offset(fx - fingerWidth / 2, palm.y - fingerHeight + 0.015f * u),
+                    Size(fingerWidth, fingerHeight),
+                    CornerRadius(fingerWidth / 2),
+                )
+            }
+        }
+        // The thumb, on the side facing the eyes.
+        val thumbX = if (side < 0) palm.x + palmWidth else palm.x
+        rotate(degrees = -side * 40f, pivot = Offset(thumbX, palm.y + palmHeight * 0.55f)) {
+            drawRoundRect(
+                HAND_COLOR.copy(alpha = alpha),
+                Offset(thumbX - fingerWidth / 2, palm.y + palmHeight * 0.55f - fingerHeight * 0.8f),
+                Size(fingerWidth, fingerHeight * 0.8f),
+                CornerRadius(fingerWidth / 2),
+            )
+        }
+    }
+}
+
+/** Kiss: little hearts floating up between the eyes. */
+private fun DrawScope.drawFloatingHearts(eyes: List<Triple<Offset, Float, Float>>, u: Float, t: Long, painter: GlowPainter) {
+    val left = eyes.first()
+    val right = eyes.last()
+    val middleX = (left.first.x + right.first.x) / 2
+    val bottom = maxOf(left.first.y + left.third, right.first.y + right.third)
+    for (i in 0 until 3) {
+        val p = ((t / 1_400f) + i / 3f) % 1f
+        val x = middleX + (i - 1) * 0.08f * u + sin(p * 6.0 + i).toFloat() * 0.05f * u
+        val y = bottom + 0.08f * u - p * 0.55f * u
+        val path = heartPath(Offset(x, y), 0.07f * u * (0.6f + 0.6f * p))
+        val alpha = 1f - p
+        painter.glow(this, path, KISS_COLOR, alpha, u)
+        drawPath(path, KISS_COLOR, alpha = alpha)
     }
 }
 
@@ -216,7 +292,7 @@ private fun DrawScope.drawEye(
 
     // Each eye stays inside its own half so the lids never cover the other eye.
     clipRect(left = left - margin, top = 0f, right = left + w + margin, bottom = size.height) {
-        val bodyAlpha = (1f - eye.heart - eye.cross - eye.spiral).coerceAtLeast(0f)
+        val bodyAlpha = (1f - eye.heart - eye.cross - eye.spiral - eye.closed).coerceAtLeast(0f)
         if (bodyAlpha > 0f) {
             val path = eyePath(left, top, w, h, eye)
             painter.glow(this, path, color, bodyAlpha, u)
@@ -229,6 +305,14 @@ private fun DrawScope.drawEye(
             val crossColor = color.copy(alpha = color.alpha * eye.cross)
             drawLine(crossColor, c + Offset(-arm, -arm), c + Offset(arm, arm), stroke, StrokeCap.Round)
             drawLine(crossColor, c + Offset(-arm, arm), c + Offset(arm, -arm), stroke, StrokeCap.Round)
+        }
+        if (eye.closed > 0f) {
+            // Asleep: a peaceful closed eye, like a little smile.
+            val arcSize = Size(w * 0.8f, h * 0.5f)
+            val arcTopLeft = Offset(c.x - arcSize.width / 2, c.y - arcSize.height / 2)
+            val glowColor = color.copy(alpha = 0.3f * eye.closed)
+            drawArc(glowColor, 0f, 180f, false, arcTopLeft, arcSize, style = Stroke(width = 0.07f * u, cap = StrokeCap.Round))
+            drawArc(color.copy(alpha = eye.closed), 0f, 180f, false, arcTopLeft, arcSize, style = Stroke(width = 0.035f * u, cap = StrokeCap.Round))
         }
         if (eye.spiral > 0f) {
             // Dizzy: spirals turning in opposite directions.
@@ -301,11 +385,14 @@ private fun heartPath(c: Offset, s: Float): Path = Path().apply {
 }
 
 /** Three little "z" floating up next to the right eye while Galaxy sleeps. */
+/** Big "Z" letters drifting up and swaying beside the head while Galaxy sleeps. */
 private fun DrawScope.drawSnore(from: Offset, u: Float, color: Color, t: Long, painter: GlowPainter) {
     for (i in 0 until 3) {
-        val p = ((t / 2_400f) + i / 3f) % 1f
-        val position = from + Offset(p * 0.15f * u, -p * 0.25f * u)
-        painter.text(this, "z", position, (0.06f + p * 0.05f) * u, color.copy(alpha = color.alpha * (1f - p)))
+        val p = ((t / 3_000f) + i / 3f) % 1f
+        val sway = sin(p * 2 * PI * 1.5).toFloat() * 0.03f * u
+        val position = from + Offset(p * 0.18f * u + sway, -p * 0.35f * u)
+        val fade = if (p < 0.15f) p / 0.15f else 1f - p
+        painter.text(this, "Z", position, (0.07f + p * 0.08f) * u, color.copy(alpha = color.alpha * fade))
     }
 }
 

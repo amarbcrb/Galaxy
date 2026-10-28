@@ -40,6 +40,9 @@ sealed interface Event {
 
     /** The eye color just changed. */
     data object NewColor : Event
+
+    /** Magic trick: think for a moment, then reveal [prediction] (or admit seeing nothing). */
+    data class Reveal(val prediction: Prediction?) : Event
 }
 
 enum class VibrationPattern { SHORT, ALARM, SHOT }
@@ -53,7 +56,7 @@ sealed interface Action {
     data class Vibrate(val pattern: VibrationPattern) : Action
 }
 
-enum class Overlay { NONE, CLOCK, TIMER }
+enum class Overlay { NONE, CLOCK, TIMER, PREDICTION }
 
 data class BrainSettings(
     val name: String = "",
@@ -71,6 +74,8 @@ data class BrainState(
     val night: Boolean = false,
     val charging: Boolean = false,
     val crack: Crack? = null,
+    /** The prediction shown on screen while [overlay] is [Overlay.PREDICTION]. */
+    val revealed: Prediction? = null,
 ) {
     val keepScreenOn: Boolean get() = charging || timerRemainingMillis != null || timerRinging
 }
@@ -118,6 +123,10 @@ class Brain(
 
     private var greetedOn: LocalDate? = null
     private var crack: Crack? = null
+    private var pendingReveal: Prediction? = null
+    private var revealAt = 0L
+    private var revealed: Prediction? = null
+    private var revealedUntil = 0L
 
     private val hungry get() = batteryLevel.let { it != null && it <= HUNGRY_LEVEL } && !charging
 
@@ -191,6 +200,22 @@ class Brain(
                 out += Action.Vibrate(VibrationPattern.SHOT)
                 out += Action.Speak(Phrases.SHOT)
             }
+            is Event.Reveal -> {
+                interact(now, out)
+                val prediction = event.prediction
+                if (prediction == null) {
+                    setMood(now, Emotion.CURIOUS to 2_500)
+                    out += Action.Speak(Phrases.NO_PREDICTION)
+                } else {
+                    // A little suspense before the reveal.
+                    pendingReveal = prediction
+                    revealAt = now.millis + THINK_MILLIS
+                    revealed = null
+                    setMood(now, Emotion.CURIOUS to THINK_MILLIS.toInt())
+                    out += Action.Speak(Phrases.THINKING)
+                    out += Action.PlaySound(SoundCue.DRUMROLL)
+                }
+            }
             Event.NewColor -> {
                 interact(now, out)
                 setMood(now, Emotion.HAPPY to 1_500)
@@ -249,7 +274,19 @@ class Brain(
             }
         }
 
-        val busy = ringingSince != null || timerDeadline != null
+        pendingReveal?.let { prediction ->
+            if (ms >= revealAt) {
+                pendingReveal = null
+                revealed = prediction
+                revealedUntil = ms + REVEAL_MILLIS
+                lastInteraction = ms
+                setMood(now, Emotion.LAUGHING to 2_500, Emotion.HAPPY to 2_000)
+                out += Action.PlaySound(SoundCue.TADA)
+                out += Action.Speak(prediction.sentence)
+            }
+        }
+
+        val busy = ringingSince != null || timerDeadline != null || pendingReveal != null
         if (night && !asleep && !busy && ms >= nightAwakeUntil) sleep(SleepReason.NIGHT)
 
         if (!night && !asleep && !busy) {
@@ -443,6 +480,7 @@ class Brain(
         val ms = now.millis
         advanceMood(ms)
         if (crack.let { it != null && ms - it.startMillis > CRACK_MILLIS }) crack = null
+        if (revealed != null && ms > revealedUntil) revealed = null
         val emotion = when {
             ringingSince != null -> Emotion.LAUGHING
             asleep -> Emotion.ASLEEP
@@ -454,6 +492,7 @@ class Brain(
         val deadline = timerDeadline
         val glancing = (ms - timerStart) % TIMER_GLANCE_CYCLE_MILLIS >= TIMER_GLANCE_CYCLE_MILLIS - TIMER_GLANCE_MILLIS
         val overlay = when {
+            revealed != null -> Overlay.PREDICTION
             ms < clockUntil -> Overlay.CLOCK
             deadline != null && !glancing -> Overlay.TIMER
             else -> Overlay.NONE
@@ -467,6 +506,7 @@ class Brain(
             night = night,
             charging = charging,
             crack = crack,
+            revealed = revealed,
         )
     }
 
@@ -478,6 +518,8 @@ class Brain(
         const val HUNGRY_REMINDER_MILLIS = 10 * 60_000L
         const val CLOCK_MILLIS = 5_000L
         const val CRACK_MILLIS = 5_000L
+        const val THINK_MILLIS = 3_000L
+        const val REVEAL_MILLIS = 8_000L
         const val RING_INTERVAL_MILLIS = 2_000L
         const val RING_MAX_MILLIS = 2 * 60_000L
         const val TIMER_GLANCE_CYCLE_MILLIS = 20_000L

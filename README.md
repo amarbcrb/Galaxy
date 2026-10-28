@@ -37,7 +37,16 @@ L'écran suit l'orientation du téléphone (portrait ou paysage).
 - **Suivi du regard** (caméra frontale) : il te suit des yeux et il est content de te voir
   quand tu reviens. Rien n'est affiché ni enregistré.
 
-Les deux s'arrêtent la nuit et se coupent dans le menu.
+Les deux s'arrêtent la nuit et se coupent dans le menu. Ce que Galaxy entend s'affiche en bas de
+l'écran. Si l'écoute continue ne marche pas sur un téléphone, le bouton « Parler à Galaxy » du menu
+ouvre la reconnaissance vocale d'Android.
+
+## Tour de magie
+
+1. Dans le menu secret (deux doigts 1 s), section « Tour de magie », choisis la carte que tu vas
+   forcer (ou un nombre).
+2. Fais ton tour, puis dis : « Vas-y Galaxy, dis-lui c'est quoi sa carte ».
+3. Galaxy réfléchit (roulement de tambour), puis montre la carte à l'écran et l'annonce.
 
 Il vit aussi tout seul : il cligne des yeux, regarde autour de lui, baille après 2 minutes sans
 attention et s'endort après 5. Il dit bonjour le matin, bonne nuit le soir, a faim quand la

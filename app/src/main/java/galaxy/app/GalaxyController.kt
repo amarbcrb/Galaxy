@@ -47,7 +47,7 @@ class GalaxyController(
     private val speaker = Speaker(activity)
     private val sounds = SoundPlayer()
     private val haptics = Haptics(activity)
-    private val voice = VoiceListener(activity, ::onPhrases)
+    private val voice = VoiceListener(activity, ::onPhrases) { voiceStatus = it }
     private val camera = FaceCamera(activity, ::onFace)
 
     var state by mutableStateOf(BrainState())
@@ -60,6 +60,15 @@ class GalaxyController(
         private set
     var menuOpen by mutableStateOf(false)
     var secretMenuOpen by mutableStateOf(false)
+    var voiceStatus by mutableStateOf(VoiceStatus.OFF)
+        private set
+
+    /** The last thing Galaxy heard, shown briefly as a subtitle. */
+    var heard by mutableStateOf<String?>(null)
+        private set
+    private var heardAt = 0L
+    private var lastCommand: Command? = null
+    private var lastCommandAt = 0L
 
     private var finger: Look? = null
     private var lastTouch = Look.CENTER
@@ -86,6 +95,7 @@ class GalaxyController(
         }
         gestures.onHold(SystemClock.uptimeMillis()).forEach(::onGesture)
         perform(brain.tick(now()))
+        if (heard != null && SystemClock.elapsedRealtime() - heardAt > SUBTITLE_MILLIS) heard = null
         look = gaze.target(SystemClock.elapsedRealtime(), finger, presence.look, tiltX, awake = !state.asleep)
         if (state.night != wasNight) {
             wasNight = state.night
@@ -166,8 +176,22 @@ class GalaxyController(
         if (presence.onFrame(face, SystemClock.elapsedRealtime())) send(Event.FaceSeen)
     }
 
-    private fun onPhrases(phrases: List<String>) {
-        phrases.firstNotNullOfOrNull { VoiceCommands.parse(it) }?.let(::command)
+    fun showSubtitle(text: String) {
+        heard = text
+        heardAt = SystemClock.elapsedRealtime()
+    }
+
+    /** Speech heard, from continuous listening ([final] false for words still coming) or the speech dialog. */
+    fun onPhrases(phrases: List<String>, final: Boolean = true) {
+        val now = SystemClock.elapsedRealtime()
+        heard = phrases.first()
+        heardAt = now
+        val found = phrases.firstNotNullOfOrNull { VoiceCommands.parse(it) } ?: return
+        // Partial and final results repeat the same words: act only once.
+        if (found == lastCommand && now - lastCommandAt < REPEAT_MILLIS) return
+        lastCommand = found
+        lastCommandAt = now
+        command(found)
     }
 
     fun onBattery(level: Int, charging: Boolean) = send(Event.Battery(level, charging))
@@ -177,10 +201,14 @@ class GalaxyController(
     fun command(command: Command) {
         secretMenuOpen = false
         menuOpen = false
-        if (command is Command.EyeColor) {
-            updateSettings(settings.copy(eyeColor = command.color ?: EyeColors.next(settings.eyeColor)))
+        when (command) {
+            is Command.EyeColor -> {
+                updateSettings(settings.copy(eyeColor = command.color ?: EyeColors.next(settings.eyeColor)))
+                send(command.toEvent())
+            }
+            Command.Reveal -> send(Event.Reveal(settings.prediction))
+            else -> send(command.toEvent())
         }
-        send(command.toEvent())
     }
 
     fun startTimer(minutes: Int) = command(Command.Timer(minutes))
@@ -251,6 +279,11 @@ class GalaxyController(
         camera.release()
         speaker.shutdown()
         sounds.release()
+    }
+
+    private companion object {
+        const val SUBTITLE_MILLIS = 3_000L
+        const val REPEAT_MILLIS = 2_500L
     }
 
     private fun send(event: Event) {

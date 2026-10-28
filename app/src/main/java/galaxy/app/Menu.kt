@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +45,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import galaxy.core.Emotion
 import galaxy.core.brain.Command
+import galaxy.core.brain.Prediction
+import galaxy.core.brain.Suit
 import galaxy.core.face.EyeColors
 import galaxy.core.face.Expressions
 
@@ -57,6 +60,8 @@ fun GalaxyMenu(
     onStartTimer: (minutes: Int) -> Unit,
     onCancelTimer: () -> Unit,
     onSettingsChange: (UserSettings) -> Unit,
+    voiceStatus: VoiceStatus,
+    onTalk: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -115,6 +120,10 @@ fun GalaxyMenu(
             HorizontalDivider()
             Toggle("Son et voix", settings.soundOn) { onSettingsChange(settings.copy(soundOn = it)) }
             Toggle("Commandes vocales (micro)", settings.voiceOn) { onSettingsChange(settings.copy(voiceOn = it)) }
+            if (settings.voiceOn) {
+                Text(voiceStatus.description(), style = MaterialTheme.typography.bodyMedium)
+            }
+            OutlinedButton(onClick = onTalk) { Text("Parler à Galaxy") }
             Toggle("Me suivre des yeux (caméra)", settings.cameraOn) { onSettingsChange(settings.copy(cameraOn = it)) }
 
             HorizontalDivider()
@@ -135,7 +144,7 @@ fun GalaxyMenu(
                 "« Dors », « Réveille-toi », « Rigole », « Souris », « Fâche-toi », « Triste », " +
                     "« Je t'aime », « Surprise », « Tourne », « Tu as faim ? », « Quelle heure est-il ? », " +
                     "« Minuteur 5 minutes », « Stop », « Mains en l'air ! » puis « Pan ! », " +
-                    "« Change la couleur de tes yeux », « Yeux rouges »",
+                    "« Change la couleur de tes yeux », « Yeux rouges », « Dis-lui c'est quoi sa carte »",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -172,7 +181,13 @@ private val SECRET_COMMANDS = listOf(
 /** Hidden menu (two-finger hold) to make Galaxy do things on demand. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SecretMenu(onCommand: (Command) -> Unit, onDismiss: () -> Unit) {
+fun SecretMenu(
+    settings: UserSettings,
+    onSettingsChange: (UserSettings) -> Unit,
+    onCommand: (Command) -> Unit,
+    onTalk: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -196,8 +211,94 @@ fun SecretMenu(onCommand: (Command) -> Unit, onDismiss: () -> Unit) {
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
+            OutlinedButton(onClick = onTalk) { Text("Parler à Galaxy") }
+
+            HorizontalDivider()
+            MagicTrick(
+                prediction = settings.prediction,
+                onChange = { onSettingsChange(settings.copy(prediction = it)) },
+                onReveal = { onCommand(Command.Reveal) },
+            )
         }
     }
+}
+
+/**
+ * Magic trick setup: choose the card (or number) Galaxy will "guess". Then say
+ * "dis-lui c'est quoi sa carte", or press Reveal.
+ */
+@Composable
+private fun MagicTrick(prediction: Prediction?, onChange: (Prediction?) -> Unit, onReveal: () -> Unit) {
+    val card = prediction as? Prediction.Card
+    var rank by remember { mutableStateOf(card?.rank ?: 1) }
+    var suit by remember { mutableStateOf(card?.suit ?: Suit.HEARTS) }
+    var number by remember { mutableStateOf((prediction as? Prediction.Number)?.value?.toString() ?: "") }
+
+    Section("Tour de magie")
+    Text(
+        when (prediction) {
+            is Prediction.Card -> "Galaxy devinera : ${prediction.name}"
+            is Prediction.Number -> "Galaxy devinera le nombre ${prediction.value}"
+            null -> "Choisis la carte que tu vas forcer."
+        },
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        (1..13).forEach { r ->
+            val label = Prediction.Card(r, suit).rankLabel
+            ChoiceButton(label, selected = card != null && r == rank) {
+                rank = r
+                onChange(Prediction.Card(r, suit))
+            }
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Suit.entries.forEach { s ->
+            ChoiceButton(s.symbol, selected = card != null && s == suit, color = if (s.red) Color(0xFFFF6B6B) else Color.Unspecified) {
+                suit = s
+                onChange(Prediction.Card(rank, s))
+            }
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = number,
+            onValueChange = { value -> number = value.filter { it.isDigit() }.take(6) },
+            singleLine = true,
+            label = { Text("Ou un nombre") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.width(160.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Button(onClick = { number.toIntOrNull()?.let { onChange(Prediction.Number(it)) } }, enabled = number.toIntOrNull() != null) {
+            Text("OK")
+        }
+    }
+    Button(onClick = onReveal, enabled = prediction != null) { Text("Révéler maintenant") }
+    Text(
+        "Pendant le tour, dis : « Vas-y Galaxy, dis-lui c'est quoi sa carte ». " +
+            "Il réfléchit quelques secondes, puis il montre et annonce la carte.",
+        style = MaterialTheme.typography.bodySmall,
+    )
+}
+
+@Composable
+private fun ChoiceButton(label: String, selected: Boolean, color: Color = Color.Unspecified, onClick: () -> Unit) {
+    if (selected) {
+        Button(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp)) { Text(label) }
+    } else {
+        OutlinedButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 12.dp)) { Text(label, color = color) }
+    }
+}
+
+private fun VoiceStatus.description() = when (this) {
+    VoiceStatus.LISTENING -> "Micro : Galaxy t'écoute."
+    VoiceStatus.STARTING -> "Micro : démarrage..."
+    VoiceStatus.OFF -> "Micro : en pause (la nuit ou en arrière-plan)."
+    VoiceStatus.NO_PERMISSION -> "Micro : autorisation refusée. Autorise le micro pour Galaxy dans les réglages Android."
+    VoiceStatus.UNAVAILABLE ->
+        "Micro : la reconnaissance vocale ne marche pas sur ce téléphone. " +
+            "Installe ou mets à jour l'appli Google, ou utilise le bouton « Parler à Galaxy »."
 }
 
 @Composable

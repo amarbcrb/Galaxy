@@ -2,6 +2,7 @@ package galaxy.app
 
 import android.content.Context
 import galaxy.core.brain.BrainSettings
+import galaxy.core.brain.Prediction
 
 /** What the user chose in the menu, saved on the phone. */
 data class UserSettings(
@@ -14,6 +15,8 @@ data class UserSettings(
     val cameraOn: Boolean = true,
     /** Chosen eye color (ARGB), or null for Galaxy's cyan. */
     val eyeColor: Long? = null,
+    /** Magic trick: what Galaxy will "guess". */
+    val prediction: Prediction? = null,
 ) {
     fun toBrain() = BrainSettings(name = name, nightStartHour = nightStartHour, nightEndHour = nightEndHour)
 }
@@ -30,6 +33,7 @@ class SettingsStore(context: Context) {
         voiceOn = prefs.getBoolean(VOICE_ON, true),
         cameraOn = prefs.getBoolean(CAMERA_ON, true),
         eyeColor = prefs.getLong(EYE_COLOR, 0L).takeIf { it != 0L },
+        prediction = Prediction.decode(prefs.getString(PREDICTION, null)),
     )
 
     fun save(settings: UserSettings) {
@@ -42,6 +46,7 @@ class SettingsStore(context: Context) {
             .putBoolean(VOICE_ON, settings.voiceOn)
             .putBoolean(CAMERA_ON, settings.cameraOn)
             .putLong(EYE_COLOR, settings.eyeColor ?: 0L)
+            .putString(PREDICTION, settings.prediction?.encode())
             .apply()
     }
 
@@ -54,5 +59,6 @@ class SettingsStore(context: Context) {
         const val VOICE_ON = "voice_on"
         const val CAMERA_ON = "camera_on"
         const val EYE_COLOR = "eye_color"
+        const val PREDICTION = "prediction"
     }
 }

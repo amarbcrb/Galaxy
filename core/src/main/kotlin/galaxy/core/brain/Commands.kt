@@ -15,10 +15,16 @@ sealed interface Command {
     data object HandsUp : Command
     data object Shoot : Command
 
+    /** Magic trick: reveal the secret prediction. */
+    data object Reveal : Command
+
     /** New eye color; the app saves it. A null color means "the next one". */
     data class EyeColor(val color: Long?) : Command
 
-    /** What Galaxy's brain does. For [EyeColor] the app also changes the color. */
+    /**
+     * What Galaxy's brain does. For [EyeColor] the app also changes the color, and for [Reveal]
+     * the app sends [Event.Reveal] with the prediction it keeps.
+     */
     fun toEvent(): Event = when (this) {
         is Act -> Event.Act(emotion)
         Sleep -> Event.Sleep
@@ -29,6 +35,7 @@ sealed interface Command {
         HandsUp -> Event.HandsUp
         Shoot -> Event.Shoot()
         is EyeColor -> Event.NewColor
+        Reveal -> Event.Reveal(null)
     }
 }
 
@@ -70,8 +77,14 @@ object VoiceCommands {
                 ?: Regex("""\b(\d{1,3})\b""").find(t)?.groupValues?.get(1)?.toInt()
             if (minutes != null && minutes in 1..600) return Command.Timer(minutes)
         }
+        val aboutCard = Regex("""\bcartes?\b""").containsMatchIn(t)
+        val secret = Regex("""\b(sa|ta|la|leur|votre) carte\b|\b(son|ton|le|leur|votre) (nombre|numero|chiffre)\b""")
+        val asking = Regex("""\b(quoi|quel\w*|dis\w*|devine\w*|revele\w*|predi\w*|annonce\w*|trouve\w*)\b""")
+        if (secret.containsMatchIn(t) && asking.containsMatchIn(t)) return Command.Reveal
         if (Regex("""\bmains? en l air\b|\bhaut les mains\b""").containsMatchIn(t)) return Command.HandsUp
-        if (Regex("""\b(pan|pam|bang|boum|tire|feu)\b""").containsMatchIn(t)) return Command.Shoot
+        if (Regex("""\b(pan|pam|bang|boum)\b""").containsMatchIn(t)) return Command.Shoot
+        // "Tire une carte" is magic talk, not a shot.
+        if (!aboutCard && Regex("""\b(tire|feu)\b""").containsMatchIn(t)) return Command.Shoot
         if (Regex("""\b(couleurs?|yeux)\b""").containsMatchIn(t)) {
             val named = EyeColors.all.firstOrNull { Regex("""\b${normalize(it.name)}s?\b""").containsMatchIn(t) }
             if (named != null) return Command.EyeColor(named.color)

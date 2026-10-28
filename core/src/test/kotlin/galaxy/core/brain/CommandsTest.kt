@@ -3,6 +3,7 @@ package galaxy.core.brain
 import galaxy.core.Emotion
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 class CommandsTest {
@@ -74,5 +75,16 @@ class CommandsTest {
         assertEquals(Command.EyeColor(null), parse("change de couleur"))
         assertNull(parse("rouge"))
         assertEquals(Event.NewColor, Command.EyeColor(null).toEvent())
+    }
+
+    @Test
+    fun magicReveal() {
+        assertEquals(Command.Reveal, parse("Vas-y, dis-lui c'est quoi sa carte"))
+        assertEquals(Command.Reveal, parse("Galaxy, quelle est sa carte ?"))
+        assertEquals(Command.Reveal, parse("devine son nombre"))
+        // Magic patter must not trigger the reveal (Galaxy may just look curious).
+        assertNotEquals<Command?>(Command.Reveal, parse("regarde ta carte"))
+        assertNull(parse("tire une carte"))
+        assertEquals(Command.Shoot, parse("feu !"))
     }
 }

@@ -363,4 +363,36 @@ class BrainTest {
         send(Event.NewColor)
         assertEquals(Emotion.HAPPY, brain.state.emotion)
     }
+
+    @Test
+    fun magicRevealAfterSuspense() {
+        val card = Prediction.Card(12, Suit.HEARTS)
+        val start = send(Event.Reveal(card))
+        assertTrue(Action.Speak(Phrases.THINKING) in start)
+        assertTrue(Action.PlaySound(SoundCue.DRUMROLL) in start)
+        assertEquals(Emotion.CURIOUS, brain.state.emotion)
+        assertEquals(Overlay.NONE, brain.state.overlay)
+
+        val spoken = mutableListOf<Action>()
+        repeat(31) {
+            millis += 100
+            wall = wall.plusNanos(100_000_000)
+            spoken += brain.tick(now())
+        }
+        assertTrue(Action.Speak("Ta carte est la Dame de cœur !") in spoken)
+        assertEquals(Overlay.PREDICTION, brain.state.overlay)
+        assertEquals(card, brain.state.revealed)
+
+        advance(Brain.REVEAL_MILLIS + 100)
+        assertEquals(Overlay.NONE, brain.state.overlay)
+        assertNull(brain.state.revealed)
+    }
+
+    @Test
+    fun revealWithoutPredictionGivesNothingAway() {
+        val actions = send(Event.Reveal(null))
+        assertTrue(Action.Speak(Phrases.NO_PREDICTION) in actions)
+        advance(4_000)
+        assertNull(brain.state.revealed)
+    }
 }

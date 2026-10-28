@@ -1,5 +1,6 @@
 package galaxy.app
 
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.hardware.SensorManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,13 +23,19 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -153,6 +161,24 @@ private fun GalaxyScreen(controller: GalaxyController) {
         if (settings.nameAsked && missing.isNotEmpty()) permissions.launch(missing.toTypedArray())
     }
 
+    val context = LocalContext.current
+    val talk = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { controller.onPhrases(it) }
+    }
+    val onTalk = {
+        controller.menuOpen = false
+        controller.secretMenuOpen = false
+        try {
+            talk.launch(
+                VoiceListener.recognizerIntent(context).putExtra(RecognizerIntent.EXTRA_PROMPT, "Parle à Galaxy"),
+            )
+        } catch (e: ActivityNotFoundException) {
+            controller.showSubtitle("Pas de reconnaissance vocale sur ce téléphone")
+        }
+    }
+
     val state = controller.state
     val eyeColor = controller.settings.eyeColor
     val color = state.emotion.color(eyeColor)
@@ -185,9 +211,21 @@ private fun GalaxyScreen(controller: GalaxyController) {
         when (state.overlay) {
             Overlay.CLOCK -> ClockDigits(color)
             Overlay.TIMER -> Digits(formatCountdown(state.timerRemainingMillis ?: 0), color)
+            Overlay.PREDICTION -> state.revealed?.let { PredictionView(it, color) }
             Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head }, eyeColor = eyeColor)
         }
         state.crack?.let { CrackOverlay(it) }
+        controller.heard?.let { heard ->
+            Text(
+                "« $heard »",
+                color = Color.White.copy(alpha = 0.6f),
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+            )
+        }
     }
 
     if (controller.menuOpen) {
@@ -197,12 +235,20 @@ private fun GalaxyScreen(controller: GalaxyController) {
             onStartTimer = controller::startTimer,
             onCancelTimer = controller::cancelTimer,
             onSettingsChange = controller::updateSettings,
+            voiceStatus = controller.voiceStatus,
+            onTalk = onTalk,
             onDismiss = { controller.menuOpen = false },
         )
     }
 
     if (controller.secretMenuOpen) {
-        SecretMenu(onCommand = controller::command, onDismiss = { controller.secretMenuOpen = false })
+        SecretMenu(
+            settings = controller.settings,
+            onSettingsChange = controller::updateSettings,
+            onCommand = controller::command,
+            onTalk = onTalk,
+            onDismiss = { controller.secretMenuOpen = false },
+        )
     }
 
     if (!controller.settings.nameAsked) {

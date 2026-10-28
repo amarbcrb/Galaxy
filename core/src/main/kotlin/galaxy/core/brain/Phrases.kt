@@ -23,4 +23,6 @@ object Phrases {
     const val HANDS_UP = "Ne tire pas !"
     const val SHOT = "Aïe !"
     const val NEW_COLOR = "Tadaa !"
+    const val THINKING = "Hmm... Je vois... je vois..."
+    const val NO_PREDICTION = "Hmm... Je ne vois rien pour l'instant."
 }

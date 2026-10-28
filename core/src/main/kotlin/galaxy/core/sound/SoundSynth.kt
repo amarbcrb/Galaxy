@@ -7,7 +7,7 @@ import kotlin.random.Random
 
 enum class SoundCue {
     TAP, SURPRISE, HAPPY, LAUGH, LOVE, ANGRY, SAD, DIZZY, YAWN, WAKE, EAT, HUNGRY, ALARM, CURIOUS,
-    SCARED, BANG, GLASS,
+    SCARED, BANG, GLASS, DRUMROLL, TADA,
 }
 
 /** A tone gliding from [startHz] to [endHz], or a burst of [noise]. A volume of 0 is a pause. */
@@ -46,6 +46,8 @@ object SoundSynth {
         SoundCue.ALARM -> listOf(t(1300, 1300, 120, 0.8f), pause(60), t(1300, 1300, 120, 0.8f), pause(60), t(1700, 1700, 200, 0.8f))
         SoundCue.CURIOUS -> listOf(t(700, 1100, 150, 0.45f))
         SoundCue.SCARED -> List(6) { listOf(t(950, 900, 60, 0.45f), t(880, 840, 60, 0.45f)) }.flatten()
+        SoundCue.DRUMROLL -> List(36) { i -> listOf(t(170, 150, 45, 0.15f + i * 0.015f), pause(20)) }.flatten()
+        SoundCue.TADA -> listOf(t(784, 784, 120), t(988, 988, 120), t(1175, 1175, 120), t(1568, 1568, 450, 0.7f))
         SoundCue.BANG -> listOf(noise(140, 0.9f), t(140, 50, 220, 0.8f))
         SoundCue.GLASS -> listOf(
             noise(60, 0.5f), t(3200, 3100, 40, 0.3f), pause(30), t(2600, 2500, 40, 0.3f), pause(20),

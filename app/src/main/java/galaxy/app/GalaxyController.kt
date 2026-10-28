@@ -176,6 +176,14 @@ class GalaxyController(
         if (presence.onFrame(face, SystemClock.elapsedRealtime())) send(Event.FaceSeen)
     }
 
+    /**
+     * Frees the microphone for Android's speech dialog: two recognizers at once make the dialog
+     * hear nothing. Listening starts again when Galaxy comes back to the front.
+     */
+    fun stopListening() {
+        voice.stop()
+    }
+
     fun showSubtitle(text: String) {
         heard = text
         heardAt = SystemClock.elapsedRealtime()

@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +44,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import galaxy.core.brain.Overlay
 import galaxy.core.face.Expressions
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), SensorEventListener {
     private lateinit var controller: GalaxyController
@@ -137,6 +139,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 }
 
+private const val MIC_RELEASE_MILLIS = 500L
+
 private val galaxyColors = darkColorScheme(
     primary = Color(Expressions.CYAN.toInt()),
     background = Color.Black,
@@ -167,15 +171,21 @@ private fun GalaxyScreen(controller: GalaxyController) {
             ?.takeIf { it.isNotEmpty() }
             ?.let { controller.onPhrases(it) }
     }
-    val onTalk = {
+    val scope = rememberCoroutineScope()
+    val onTalk: () -> Unit = {
         controller.menuOpen = false
         controller.secretMenuOpen = false
-        try {
-            talk.launch(
-                VoiceListener.recognizerIntent(context).putExtra(RecognizerIntent.EXTRA_PROMPT, "Parle à Galaxy"),
-            )
-        } catch (e: ActivityNotFoundException) {
-            controller.showSubtitle("Pas de reconnaissance vocale sur ce téléphone")
+        controller.stopListening()
+        scope.launch {
+            // Give the microphone a moment to be released before the dialog opens.
+            delay(MIC_RELEASE_MILLIS)
+            try {
+                talk.launch(
+                    VoiceListener.recognizerIntent(context).putExtra(RecognizerIntent.EXTRA_PROMPT, "Parle à Galaxy"),
+                )
+            } catch (e: ActivityNotFoundException) {
+                controller.showSubtitle("Pas de reconnaissance vocale sur ce téléphone")
+            }
         }
     }
 

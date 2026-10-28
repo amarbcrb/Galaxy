@@ -79,6 +79,7 @@ fun ModePicker(current: Emotion, eyeColor: Long?, onSelect: (Mode) -> Unit, onCl
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose),
     ) {
         val itemWidth = 120.dp
+        val sidePadding = (maxWidth - itemWidth) / 2
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
@@ -89,7 +90,7 @@ fun ModePicker(current: Emotion, eyeColor: Long?, onSelect: (Mode) -> Unit, onCl
         ) {
             HorizontalPager(
                 state = pager,
-                contentPadding = PaddingValues(horizontal = (maxWidth - itemWidth) / 2),
+                contentPadding = PaddingValues(horizontal = sidePadding),
                 pageSize = PageSize.Fixed(itemWidth),
                 pageSpacing = 12.dp,
             ) { page ->

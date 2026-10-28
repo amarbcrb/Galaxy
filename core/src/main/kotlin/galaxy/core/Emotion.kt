@@ -13,4 +13,8 @@ enum class Emotion {
     SLEEPY,
     ASLEEP,
     HUNGRY,
+    SCARED,
+
+    /** Knocked out after being "shot": X eyes over a cracked screen. */
+    KO,
 }

@@ -21,6 +21,7 @@ class Haptics(context: Context) {
         val effect = when (pattern) {
             VibrationPattern.SHORT -> VibrationEffect.createOneShot(40, VibrationEffect.DEFAULT_AMPLITUDE)
             VibrationPattern.ALARM -> VibrationEffect.createWaveform(longArrayOf(0, 250, 150, 250), -1)
+            VibrationPattern.SHOT -> VibrationEffect.createWaveform(longArrayOf(0, 60, 40, 300), -1)
         }
         v.vibrate(effect)
     }

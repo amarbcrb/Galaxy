@@ -1,6 +1,12 @@
 package galaxy.app
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,10 +38,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import galaxy.core.Emotion
 import galaxy.core.brain.Command
+import galaxy.core.face.EyeColors
+import galaxy.core.face.Expressions
 
 private val TIMER_PRESETS = listOf(1, 3, 5, 10, 15, 30)
 
@@ -90,6 +100,10 @@ fun GalaxyMenu(
             )
 
             HorizontalDivider()
+            Section("Couleur des yeux")
+            ColorSwatches(selected = settings.eyeColor) { onSettingsChange(settings.copy(eyeColor = it)) }
+
+            HorizontalDivider()
             Section("Mode nuit")
             Text(
                 "Galaxy dort de ${settings.nightStartHour}h à ${settings.nightEndHour}h. L'écran garde la luminosité du téléphone.",
@@ -120,7 +134,8 @@ fun GalaxyMenu(
             Text(
                 "« Dors », « Réveille-toi », « Rigole », « Souris », « Fâche-toi », « Triste », " +
                     "« Je t'aime », « Surprise », « Tourne », « Tu as faim ? », « Quelle heure est-il ? », " +
-                    "« Minuteur 5 minutes », « Stop »",
+                    "« Minuteur 5 minutes », « Stop », « Mains en l'air ! » puis « Pan ! », " +
+                    "« Change la couleur de tes yeux », « Yeux rouges »",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -149,6 +164,9 @@ private val SECRET_COMMANDS = listOf(
     "Faim" to Command.Act(Emotion.HUNGRY),
     "Fatigué" to Command.Act(Emotion.SLEEPY),
     "L'heure" to Command.TellTime,
+    "Mains en l'air" to Command.HandsUp,
+    "Pan !" to Command.Shoot,
+    "Couleur" to Command.EyeColor(null),
 )
 
 /** Hidden menu (two-finger hold) to make Galaxy do things on demand. */
@@ -178,6 +196,26 @@ fun SecretMenu(onCommand: (Command) -> Unit, onDismiss: () -> Unit) {
                     repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ColorSwatches(selected: Long?, onSelect: (Long) -> Unit) {
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        EyeColors.all.forEach { named ->
+            val isSelected = named.color == (selected ?: Expressions.CYAN)
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(named.color.toInt()))
+                    .border(if (isSelected) 3.dp else 0.dp, Color.White, CircleShape)
+                    .clickable { onSelect(named.color) },
+            )
         }
     }
 }

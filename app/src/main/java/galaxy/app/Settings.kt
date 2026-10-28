@@ -12,6 +12,8 @@ data class UserSettings(
     val soundOn: Boolean = true,
     val voiceOn: Boolean = true,
     val cameraOn: Boolean = true,
+    /** Chosen eye color (ARGB), or null for Galaxy's cyan. */
+    val eyeColor: Long? = null,
 ) {
     fun toBrain() = BrainSettings(name = name, nightStartHour = nightStartHour, nightEndHour = nightEndHour)
 }
@@ -27,6 +29,7 @@ class SettingsStore(context: Context) {
         soundOn = prefs.getBoolean(SOUND_ON, true),
         voiceOn = prefs.getBoolean(VOICE_ON, true),
         cameraOn = prefs.getBoolean(CAMERA_ON, true),
+        eyeColor = prefs.getLong(EYE_COLOR, 0L).takeIf { it != 0L },
     )
 
     fun save(settings: UserSettings) {
@@ -38,6 +41,7 @@ class SettingsStore(context: Context) {
             .putBoolean(SOUND_ON, settings.soundOn)
             .putBoolean(VOICE_ON, settings.voiceOn)
             .putBoolean(CAMERA_ON, settings.cameraOn)
+            .putLong(EYE_COLOR, settings.eyeColor ?: 0L)
             .apply()
     }
 
@@ -49,5 +53,6 @@ class SettingsStore(context: Context) {
         const val SOUND_ON = "sound_on"
         const val VOICE_ON = "voice_on"
         const val CAMERA_ON = "camera_on"
+        const val EYE_COLOR = "eye_color"
     }
 }

@@ -31,9 +31,15 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/galaxy.keystore"
             echo "GALAXY_KEYSTORE_FILE=$RUNNER_TEMP/galaxy.keystore" >> "$GITHUB_ENV"
-          else
-            echo "::warning::No GALAXY_KEYSTORE_BASE64 secret: the APK is signed with a temporary key."
           fi
+
+      # Without the secret, the release is signed with this machine's debug key. Keeping that key
+      # in the Actions cache signs every build the same way, so updates install over each other.
+      - name: Keep the same signing key between builds
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: galaxy-debug-keystore-v1
 
       - name: Build the APK
         env:

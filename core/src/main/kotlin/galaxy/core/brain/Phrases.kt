@@ -20,4 +20,7 @@ object Phrases {
     const val HUNGRY = "J'ai faim..."
     const val THANKS_FOOD = "Miam, merci !"
     const val TIMER_DONE = "C'est l'heure !"
+    const val HANDS_UP = "Ne tire pas !"
+    const val SHOT = "Aïe !"
+    const val NEW_COLOR = "Tadaa !"
 }

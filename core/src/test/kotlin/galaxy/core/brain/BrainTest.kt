@@ -329,4 +329,38 @@ class BrainTest {
         send(Event.FaceSeen)
         assertTrue(brain.state.asleep)
     }
+
+    @Test
+    fun handsUpThenShotCracksTheScreen() {
+        val up = send(Event.HandsUp)
+        assertEquals(Emotion.SCARED, brain.state.emotion)
+        assertTrue(Action.Speak(Phrases.HANDS_UP) in up)
+
+        val shot = send(Event.Shoot(0.2f, -0.3f))
+        assertEquals(Emotion.KO, brain.state.emotion)
+        val crack = brain.state.crack!!
+        assertEquals(0.2f, crack.x)
+        assertEquals(-0.3f, crack.y)
+        assertTrue(Action.PlaySound(SoundCue.GLASS) in shot)
+        assertTrue(Action.Vibrate(VibrationPattern.SHOT) in shot)
+
+        advance(3_600)
+        assertEquals(Emotion.DIZZY, brain.state.emotion)
+        advance(Brain.CRACK_MILLIS)
+        assertNull(brain.state.crack)
+        assertEquals(Emotion.CALM, brain.state.emotion)
+    }
+
+    @Test
+    fun shotWithoutAimPicksASpotOnScreen() {
+        send(Event.Shoot())
+        val crack = brain.state.crack!!
+        assertTrue(crack.x in -1f..1f && crack.y in -1f..1f)
+    }
+
+    @Test
+    fun newColorMakesHimHappy() {
+        send(Event.NewColor)
+        assertEquals(Emotion.HAPPY, brain.state.emotion)
+    }
 }

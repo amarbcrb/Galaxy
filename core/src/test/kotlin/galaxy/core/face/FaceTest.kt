@@ -81,4 +81,28 @@ class FaceTest {
         assertTrue(!presence.onFrame(Look(0f, 0f), 10_000))
         assertTrue(presence.onFrame(Look(0f, 0f), 40_000))
     }
+
+    @Test
+    fun chosenEyeColorTintsCalmLooksOnly() {
+        val red = 0xFFFF4A4AL
+        assertEquals(red, Expressions.of(Emotion.CALM, red).color)
+        assertEquals(red, Expressions.of(Emotion.CURIOUS, red).color)
+        assertEquals(Expressions.of(Emotion.LOVE).color, Expressions.of(Emotion.LOVE, red).color)
+    }
+
+    @Test
+    fun eyeColorsCycle() {
+        assertEquals(EyeColors.all[1].color, EyeColors.next(null))
+        assertEquals(EyeColors.all[0].color, EyeColors.next(EyeColors.all.last().color))
+    }
+
+    @Test
+    fun crackPatternStartsAtImpactAndIsStable() {
+        val a = CrackPattern.generate(seed = 7, impactX = 300f, impactY = 500f, width = 1080f, height = 2400f)
+        val b = CrackPattern.generate(seed = 7, impactX = 300f, impactY = 500f, width = 1080f, height = 2400f)
+        assertEquals(a, b)
+        assertTrue(a.size > 30, "segments=${a.size}")
+        assertTrue(a.count { it.x1 == 300f && it.y1 == 500f } >= 9)
+        assertTrue(a.all { it.width in 1f..4f })
+    }
 }

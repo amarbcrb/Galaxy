@@ -31,9 +31,21 @@ sealed interface Event {
 
     /** Someone's face appeared in front of the camera after being away. */
     data object FaceSeen : Event
+
+    /** "Mains en l'air !": Galaxy gets scared. */
+    data object HandsUp : Event
+
+    /** "Pan !": the screen cracks where [x], [y] point (-1..1), or somewhere random if null. */
+    data class Shoot(val x: Float? = null, val y: Float? = null) : Event
+
+    /** The eye color just changed. */
+    data object NewColor : Event
 }
 
-enum class VibrationPattern { SHORT, ALARM }
+enum class VibrationPattern { SHORT, ALARM, SHOT }
+
+/** A cracked screen, centered on [x], [y] in -1..1 screen coordinates. */
+data class Crack(val x: Float, val y: Float, val seed: Int, val startMillis: Long)
 
 sealed interface Action {
     data class Speak(val text: String) : Action
@@ -58,6 +70,7 @@ data class BrainState(
     val asleep: Boolean = false,
     val night: Boolean = false,
     val charging: Boolean = false,
+    val crack: Crack? = null,
 ) {
     val keepScreenOn: Boolean get() = charging || timerRemainingMillis != null || timerRinging
 }
@@ -104,6 +117,7 @@ class Brain(
     private var lastHungryCall = 0L
 
     private var greetedOn: LocalDate? = null
+    private var crack: Crack? = null
 
     private val hungry get() = batteryLevel.let { it != null && it <= HUNGRY_LEVEL } && !charging
 
@@ -154,6 +168,34 @@ class Brain(
                     setMood(now, Emotion.HAPPY to 2_000)
                     out += Action.PlaySound(SoundCue.HAPPY)
                 }
+            }
+            Event.HandsUp -> {
+                ringingSince = null
+                interact(now, out)
+                setMood(now, Emotion.SCARED to 8_000)
+                out += Action.Speak(Phrases.HANDS_UP)
+                out += Action.PlaySound(SoundCue.SCARED)
+            }
+            is Event.Shoot -> {
+                ringingSince = null
+                interact(now, out)
+                crack = Crack(
+                    x = event.x ?: random.nextFloat() * 1.2f - 0.6f,
+                    y = event.y ?: random.nextFloat() * 1.2f - 0.6f,
+                    seed = random.nextInt(),
+                    startMillis = now.millis,
+                )
+                setMood(now, Emotion.KO to 3_500, Emotion.DIZZY to 2_000)
+                out += Action.PlaySound(SoundCue.BANG)
+                out += Action.PlaySound(SoundCue.GLASS)
+                out += Action.Vibrate(VibrationPattern.SHOT)
+                out += Action.Speak(Phrases.SHOT)
+            }
+            Event.NewColor -> {
+                interact(now, out)
+                setMood(now, Emotion.HAPPY to 1_500)
+                out += Action.PlaySound(SoundCue.HAPPY)
+                out += Action.Speak(Phrases.NEW_COLOR)
             }
             Event.FaceDown -> sleep(SleepReason.FACE_DOWN)
             Event.FlatStill -> if (!asleep) sleep(SleepReason.FLAT)
@@ -325,7 +367,8 @@ class Brain(
         Emotion.DIZZY -> SoundCue.DIZZY
         Emotion.SLEEPY -> SoundCue.YAWN
         Emotion.HUNGRY -> SoundCue.HUNGRY
-        Emotion.CALM, Emotion.ASLEEP -> null
+        Emotion.SCARED -> SoundCue.SCARED
+        Emotion.CALM, Emotion.ASLEEP, Emotion.KO -> null
     }
 
     /** Someone paid attention to Galaxy: wake up if needed and say good morning once a day. */
@@ -399,6 +442,7 @@ class Brain(
     private fun refresh(now: Moment) {
         val ms = now.millis
         advanceMood(ms)
+        if (crack.let { it != null && ms - it.startMillis > CRACK_MILLIS }) crack = null
         val emotion = when {
             ringingSince != null -> Emotion.LAUGHING
             asleep -> Emotion.ASLEEP
@@ -422,6 +466,7 @@ class Brain(
             asleep = asleep,
             night = night,
             charging = charging,
+            crack = crack,
         )
     }
 
@@ -432,6 +477,7 @@ class Brain(
         const val NIGHT_AWAKE_MILLIS = 30_000L
         const val HUNGRY_REMINDER_MILLIS = 10 * 60_000L
         const val CLOCK_MILLIS = 5_000L
+        const val CRACK_MILLIS = 5_000L
         const val RING_INTERVAL_MILLIS = 2_000L
         const val RING_MAX_MILLIS = 2 * 60_000L
         const val TIMER_GLANCE_CYCLE_MILLIS = 20_000L

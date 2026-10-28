@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import galaxy.core.Emotion
 import galaxy.core.brain.Action
 import galaxy.core.brain.Brain
 import galaxy.core.brain.BrainState
@@ -15,6 +16,7 @@ import galaxy.core.brain.Command
 import galaxy.core.brain.Event
 import galaxy.core.brain.Moment
 import galaxy.core.brain.VoiceCommands
+import galaxy.core.face.EyeColors
 import galaxy.core.face.FacePresence
 import galaxy.core.face.Gaze
 import galaxy.core.face.Look
@@ -60,6 +62,7 @@ class GalaxyController(
     var secretMenuOpen by mutableStateOf(false)
 
     private var finger: Look? = null
+    private var lastTouch = Look.CENTER
     private var touchArea = 1f to 1f
     private var tiltX = 0f
     private var rotation = 0
@@ -107,13 +110,16 @@ class GalaxyController(
     }
 
     fun onUp(x: Float, y: Float, uptimeMillis: Long) {
+        val (w, h) = touchArea
+        lastTouch = Look(x / w * 2 - 1, y / h * 2 - 1)
         finger = null
         gestures.onUp(x, y, uptimeMillis).forEach(::onGesture)
     }
 
     private fun onGesture(gesture: Gesture) {
         val event = when (gesture) {
-            Gesture.TAP -> Event.Tap
+            // Hands up and scared: a tap "shoots" right where the finger is.
+            Gesture.TAP -> if (state.emotion == Emotion.SCARED) Event.Shoot(lastTouch.x, lastTouch.y) else Event.Tap
             Gesture.DOUBLE_TAP -> Event.DoubleTap
             Gesture.LONG_PRESS -> Event.LongPress
             Gesture.PET -> Event.Pet
@@ -171,6 +177,9 @@ class GalaxyController(
     fun command(command: Command) {
         secretMenuOpen = false
         menuOpen = false
+        if (command is Command.EyeColor) {
+            updateSettings(settings.copy(eyeColor = command.color ?: EyeColors.next(settings.eyeColor)))
+        }
         send(command.toEvent())
     }
 

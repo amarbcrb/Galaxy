@@ -1,6 +1,7 @@
 package galaxy.core.brain
 
 import galaxy.core.Emotion
+import galaxy.core.face.EyeColors
 import java.text.Normalizer
 
 /** Things you can ask Galaxy to do, by voice or from the hidden menu. */
@@ -11,7 +12,13 @@ sealed interface Command {
     data object TellTime : Command
     data object Stop : Command
     data class Timer(val minutes: Int) : Command
+    data object HandsUp : Command
+    data object Shoot : Command
 
+    /** New eye color; the app saves it. A null color means "the next one". */
+    data class EyeColor(val color: Long?) : Command
+
+    /** What Galaxy's brain does. For [EyeColor] the app also changes the color. */
     fun toEvent(): Event = when (this) {
         is Act -> Event.Act(emotion)
         Sleep -> Event.Sleep
@@ -19,6 +26,9 @@ sealed interface Command {
         TellTime -> Event.TellTime
         Stop -> Event.CancelTimer
         is Timer -> Event.StartTimer(minutes * 60_000L)
+        HandsUp -> Event.HandsUp
+        Shoot -> Event.Shoot()
+        is EyeColor -> Event.NewColor
     }
 }
 
@@ -59,6 +69,13 @@ object VoiceCommands {
             val minutes = beforeMinutes?.let { it.toIntOrNull() ?: numberWords[it] }
                 ?: Regex("""\b(\d{1,3})\b""").find(t)?.groupValues?.get(1)?.toInt()
             if (minutes != null && minutes in 1..600) return Command.Timer(minutes)
+        }
+        if (Regex("""\bmains? en l air\b|\bhaut les mains\b""").containsMatchIn(t)) return Command.HandsUp
+        if (Regex("""\b(pan|pam|bang|boum|tire|feu)\b""").containsMatchIn(t)) return Command.Shoot
+        if (Regex("""\b(couleurs?|yeux)\b""").containsMatchIn(t)) {
+            val named = EyeColors.all.firstOrNull { Regex("""\b${normalize(it.name)}s?\b""").containsMatchIn(t) }
+            if (named != null) return Command.EyeColor(named.color)
+            if (Regex("""\bchange\w*\b""").containsMatchIn(t)) return Command.EyeColor(null)
         }
         if (Regex("""\b(arrete\w*|stop)\b""").containsMatchIn(t)) return Command.Stop
         if (Regex("""\bheures?\b""").containsMatchIn(t)) return Command.TellTime

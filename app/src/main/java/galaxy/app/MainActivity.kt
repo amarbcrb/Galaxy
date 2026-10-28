@@ -154,7 +154,8 @@ private fun GalaxyScreen(controller: GalaxyController) {
     }
 
     val state = controller.state
-    val color = state.emotion.color()
+    val eyeColor = controller.settings.eyeColor
+    val color = state.emotion.color(eyeColor)
 
     Box(
         Modifier
@@ -184,8 +185,9 @@ private fun GalaxyScreen(controller: GalaxyController) {
         when (state.overlay) {
             Overlay.CLOCK -> ClockDigits(color)
             Overlay.TIMER -> Digits(formatCountdown(state.timerRemainingMillis ?: 0), color)
-            Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head })
+            Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head }, eyeColor = eyeColor)
         }
+        state.crack?.let { CrackOverlay(it) }
     }
 
     if (controller.menuOpen) {

@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -49,15 +50,21 @@ private const val EYE_SPACING = 0.34f
 /** How many face units must fit across the screen, so both eyes fit in portrait too. */
 private const val FACE_WIDTH = 1.3f
 
-fun Emotion.color(): Color = Color(Expressions.of(this).color.toInt())
+fun Emotion.color(eyeColor: Long? = null): Color = Color(Expressions.of(this, eyeColor).color.toInt())
 
 /**
  * Galaxy's animated face. Morphs smoothly between emotions, blinks, looks at [look] and turns
  * its head by [head] (read at draw time, so fast sensor updates only redraw).
  */
 @Composable
-fun Face(emotion: Emotion, look: Look, head: () -> Look, modifier: Modifier = Modifier) {
-    val target = Expressions.of(emotion)
+fun Face(
+    emotion: Emotion,
+    look: Look,
+    head: () -> Look,
+    eyeColor: Long?,
+    modifier: Modifier = Modifier,
+) {
+    val target = Expressions.of(emotion, eyeColor)
     var from by remember { mutableStateOf(target) }
     var to by remember { mutableStateOf(target) }
     val progress = remember { Animatable(1f) }
@@ -81,7 +88,7 @@ fun Face(emotion: Emotion, look: Look, head: () -> Look, modifier: Modifier = Mo
     Canvas(modifier.fillMaxSize()) {
         val spec = FaceSpec.lerp(from, to, progress.value)
         val t = frameMillis
-        val openness = if (emotion == Emotion.ASLEEP) 1f else blinker.openness(t)
+        val openness = if (emotion == Emotion.ASLEEP || emotion == Emotion.KO) 1f else blinker.openness(t)
         drawFace(spec, emotion, gazeX, gazeY, head(), openness, t, painter)
     }
 }
@@ -104,6 +111,8 @@ private fun DrawScope.drawFace(
     val bounce = if (emotion == Emotion.LAUGHING) -abs(sin(t / 120.0)).toFloat() * 0.03f * u else 0f
     val pulse = if (emotion == Emotion.LOVE) 1f + 0.06f * sin(t * 2 * PI / 600).toFloat() else 1f
     val spin = if (emotion == Emotion.DIZZY) (t % 700) / 700.0 * 2 * PI else null
+    // Scared: the whole face trembles.
+    val tremble = if (emotion == Emotion.SCARED) Offset(sin(t / 23.0).toFloat(), cos(t / 31.0).toFloat()) * (0.006f * u) else Offset.Zero
 
     var rightEyeTop = Offset.Zero
     for (side in intArrayOf(-1, 1)) {
@@ -111,7 +120,7 @@ private fun DrawScope.drawFace(
         var center = Offset(
             size.width / 2 + side * spacing * u + eye.offsetX * u,
             size.height / 2 + eye.offsetY * u + bounce,
-        ) + gaze
+        ) + gaze + tremble
         if (spin != null) {
             // Eyes circle in opposite directions.
             center += Offset(cos(side * spin).toFloat(), sin(side * spin).toFloat()) * (0.05f * u)
@@ -142,11 +151,19 @@ private fun DrawScope.drawEye(
 
     // Each eye stays inside its own half so the lids never cover the other eye.
     clipRect(left = left - margin, top = 0f, right = left + w + margin, bottom = size.height) {
-        val bodyAlpha = 1f - eye.heart
+        val bodyAlpha = (1f - eye.heart - eye.cross).coerceAtLeast(0f)
         if (bodyAlpha > 0f) {
             val path = eyePath(left, top, w, h, eye)
             painter.glow(this, path, color, bodyAlpha, u)
             drawPath(path, color, alpha = bodyAlpha)
+        }
+        if (eye.cross > 0f) {
+            // Knocked out: an X instead of the eye.
+            val arm = min(w, h) * 0.45f
+            val stroke = 0.06f * u
+            val crossColor = color.copy(alpha = color.alpha * eye.cross)
+            drawLine(crossColor, c + Offset(-arm, -arm), c + Offset(arm, arm), stroke, StrokeCap.Round)
+            drawLine(crossColor, c + Offset(-arm, arm), c + Offset(arm, -arm), stroke, StrokeCap.Round)
         }
         if (eye.heart > 0f) {
             val path = heartPath(c, min(w, h) * 1.05f)

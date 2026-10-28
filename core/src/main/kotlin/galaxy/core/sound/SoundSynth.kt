@@ -3,11 +3,21 @@ package galaxy.core.sound
 import kotlin.math.PI
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.random.Random
 
-enum class SoundCue { TAP, SURPRISE, HAPPY, LAUGH, LOVE, ANGRY, SAD, DIZZY, YAWN, WAKE, EAT, HUNGRY, ALARM, CURIOUS }
+enum class SoundCue {
+    TAP, SURPRISE, HAPPY, LAUGH, LOVE, ANGRY, SAD, DIZZY, YAWN, WAKE, EAT, HUNGRY, ALARM, CURIOUS,
+    SCARED, BANG, GLASS,
+}
 
-/** A tone gliding from [startHz] to [endHz]. A volume of 0 is a pause. */
-data class Tone(val startHz: Float, val endHz: Float, val millis: Int, val volume: Float = 0.6f)
+/** A tone gliding from [startHz] to [endHz], or a burst of [noise]. A volume of 0 is a pause. */
+data class Tone(
+    val startHz: Float,
+    val endHz: Float,
+    val millis: Int,
+    val volume: Float = 0.6f,
+    val noise: Boolean = false,
+)
 
 /** Generates Galaxy's little robot sounds as 16-bit mono PCM, so the app ships no audio files. */
 object SoundSynth {
@@ -17,6 +27,8 @@ object SoundSynth {
         Tone(start.toFloat(), end.toFloat(), millis, volume)
 
     private fun pause(millis: Int) = Tone(0f, 0f, millis, 0f)
+
+    private fun noise(millis: Int, volume: Float) = Tone(0f, 0f, millis, volume, noise = true)
 
     fun tones(cue: SoundCue): List<Tone> = when (cue) {
         SoundCue.TAP -> listOf(t(900, 1300, 60, 0.4f))
@@ -33,6 +45,12 @@ object SoundSynth {
         SoundCue.HUNGRY -> listOf(t(500, 350, 300, 0.45f), pause(80), t(450, 300, 400, 0.45f))
         SoundCue.ALARM -> listOf(t(1300, 1300, 120, 0.8f), pause(60), t(1300, 1300, 120, 0.8f), pause(60), t(1700, 1700, 200, 0.8f))
         SoundCue.CURIOUS -> listOf(t(700, 1100, 150, 0.45f))
+        SoundCue.SCARED -> List(6) { listOf(t(950, 900, 60, 0.45f), t(880, 840, 60, 0.45f)) }.flatten()
+        SoundCue.BANG -> listOf(noise(140, 0.9f), t(140, 50, 220, 0.8f))
+        SoundCue.GLASS -> listOf(
+            noise(60, 0.5f), t(3200, 3100, 40, 0.3f), pause(30), t(2600, 2500, 40, 0.3f), pause(20),
+            t(3800, 3700, 40, 0.25f), pause(40), t(2900, 2800, 50, 0.25f), noise(120, 0.25f),
+        )
     }
 
     fun render(cue: SoundCue, sampleRate: Int = SAMPLE_RATE): ShortArray {
@@ -41,6 +59,7 @@ object SoundSynth {
         val out = ShortArray(total)
         var index = 0
         var phase = 0.0
+        val random = Random(cue.ordinal)
         for (tone in tones) {
             val n = samplesFor(tone, sampleRate)
             val attack = min(n / 4, sampleRate * 5 / 1000).coerceAtLeast(1)
@@ -59,7 +78,7 @@ object SoundSynth {
                     else -> 1.0
                 }
                 // A touch of the second harmonic makes the beep sound rounder and cuter.
-                val wave = (sin(phase) + 0.25 * sin(2 * phase)) / 1.25
+                val wave = if (tone.noise) random.nextDouble(-1.0, 1.0) else (sin(phase) + 0.25 * sin(2 * phase)) / 1.25
                 out[index++] = (wave * envelope * tone.volume * Short.MAX_VALUE).toInt().toShort()
             }
         }

@@ -30,6 +30,10 @@ L'écran suit l'orientation du téléphone (portrait ou paysage).
 - **Commandes vocales** (micro) : « Dors », « Réveille-toi », « Rigole », « Souris »,
   « Fâche-toi », « Triste », « Je t'aime », « Surprise », « Tourne », « Tu as faim ? »,
   « Quelle heure est-il ? », « Minuteur 5 minutes », « Stop ».
+- **Mains en l'air !** : il a peur et tremble. Puis « Pan ! » (ou un tap sur l'écran) : l'écran
+  a l'air cassé, Galaxy est K.O. avec des yeux en X, puis tout se répare.
+- **Couleur des yeux** : « Change la couleur de tes yeux », « Yeux rouges », « Mets tes yeux en
+  violet »... ou dans le menu.
 - **Suivi du regard** (caméra frontale) : il te suit des yeux et il est content de te voir
   quand tu reviens. Rien n'est affiché ni enregistré.
 

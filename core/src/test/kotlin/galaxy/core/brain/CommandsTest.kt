@@ -55,4 +55,24 @@ class CommandsTest {
         assertEquals(Event.StartTimer(120_000), Command.Timer(2).toEvent())
         assertEquals(Event.CancelTimer, Command.Stop.toEvent())
     }
+
+    @Test
+    fun handsUpAndShoot() {
+        assertEquals(Command.HandsUp, parse("Mains en l'air !"))
+        assertEquals(Command.HandsUp, parse("haut les mains"))
+        assertEquals(Command.Shoot, parse("Pan !"))
+        assertEquals(Command.Shoot, parse("pan pan"))
+        assertEquals(Command.Shoot, parse("bang"))
+        assertEquals(Event.Shoot(), Command.Shoot.toEvent())
+    }
+
+    @Test
+    fun eyeColors() {
+        assertEquals(Command.EyeColor(0xFFFF4A4AL), parse("change la couleur de tes yeux en rouge"))
+        assertEquals(Command.EyeColor(0xFF4AFF7AL), parse("yeux verts"))
+        assertEquals(Command.EyeColor(0xFFB06CFFL), parse("Mets tes yeux en violet"))
+        assertEquals(Command.EyeColor(null), parse("change de couleur"))
+        assertNull(parse("rouge"))
+        assertEquals(Event.NewColor, Command.EyeColor(null).toEvent())
+    }
 }

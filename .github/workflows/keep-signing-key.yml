@@ -1,0 +1,17 @@
+name: Keep signing key
+
+# GitHub drops cache entries unused for 7 days. Touching the signing key every few days keeps
+# the same key, so a new Galaxy version still installs over the old one after a quiet week.
+on:
+  schedule:
+    - cron: "17 3 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache/restore@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: galaxy-debug-keystore-v1

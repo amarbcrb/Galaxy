@@ -221,6 +221,14 @@ private fun GalaxyScreen(controller: GalaxyController) {
             Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head }, eyeColor = eyeColor)
         }
         state.crack?.let { CrackOverlay(it) }
+        if (controller.modePickerOpen) {
+            ModePicker(
+                current = controller.settings.defaultEmotion,
+                eyeColor = eyeColor,
+                onSelect = controller::selectMode,
+                onClose = { controller.modePickerOpen = false },
+            )
+        }
         if (controller.listening) {
             ListeningBars(color, Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp))
         }

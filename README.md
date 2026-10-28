@@ -15,7 +15,7 @@ Télécharger le dernier APK : https://github.com/amarbcrb/Galaxy/releases/lates
 | Tap | il sursaute |
 | Plein de taps rapides | il se fâche |
 | Appui long | il rit |
-| Double-tap | il affiche et dit l'heure |
+| Double-tap | carrousel pour choisir son mode et ses grimaces (ou afficher l'heure) |
 | Secouer | il a le tournis |
 | Incliner | ses yeux glissent vers le bas |
 | Poser à plat 1 min ou retourner | il s'endort |

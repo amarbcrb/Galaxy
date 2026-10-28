@@ -77,6 +77,9 @@ class GalaxyController(
         private set
     var menuOpen by mutableStateOf(false)
     var secretMenuOpen by mutableStateOf(false)
+
+    /** The double-tap carousel of faces. */
+    var modePickerOpen by mutableStateOf(false)
     var voiceStatus by mutableStateOf(VoiceStatus.OFF)
         private set
     var voiceError by mutableStateOf<Int?>(null)
@@ -134,6 +137,8 @@ class GalaxyController(
     // Touch
 
     fun onDown(x: Float, y: Float, uptimeMillis: Long, width: Float, height: Float) {
+        // The carousel handles its own touches.
+        if (modePickerOpen) return
         finger = Look(x / width * 2 - 1, y / height * 2 - 1)
         touchArea = width to height
         gestures.onDown(x, y, uptimeMillis, width, height).forEach(::onGesture)
@@ -142,12 +147,14 @@ class GalaxyController(
     fun onPointers(count: Int, uptimeMillis: Long) = gestures.onPointerCount(count, uptimeMillis)
 
     fun onMove(x: Float, y: Float, uptimeMillis: Long) {
+        if (modePickerOpen) return
         val (w, h) = touchArea
         finger = Look(x / w * 2 - 1, y / h * 2 - 1)
         gestures.onMove(x, y, uptimeMillis).forEach(::onGesture)
     }
 
     fun onUp(x: Float, y: Float, uptimeMillis: Long) {
+        if (modePickerOpen) return
         val (w, h) = touchArea
         lastTouch = Look(x / w * 2 - 1, y / h * 2 - 1)
         finger = null
@@ -158,7 +165,10 @@ class GalaxyController(
         val event = when (gesture) {
             // Hands up and scared: a tap "shoots" right where the finger is.
             Gesture.TAP -> if (state.emotion == Emotion.SCARED) Event.Shoot(lastTouch.x, lastTouch.y) else Event.Tap
-            Gesture.DOUBLE_TAP -> Event.DoubleTap
+            Gesture.DOUBLE_TAP -> {
+                modePickerOpen = true
+                Event.MenuOpened
+            }
             Gesture.LONG_PRESS -> Event.LongPress
             Gesture.PET -> Event.Pet
             Gesture.SWIPE_UP -> {
@@ -278,6 +288,18 @@ class GalaxyController(
     }
 
     fun startTimer(minutes: Int) = command(Command.Timer(minutes))
+
+    /** A face picked in the carousel becomes Galaxy's resting face; the clock entry shows the time. */
+    fun selectMode(mode: Mode) {
+        val emotion = mode.emotion
+        if (emotion == null) {
+            modePickerOpen = false
+            send(Event.TellTime)
+            return
+        }
+        updateSettings(settings.copy(defaultEmotion = emotion))
+        send(Event.Act(emotion))
+    }
 
     fun cancelTimer() = send(Event.CancelTimer)
 

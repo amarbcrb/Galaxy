@@ -149,7 +149,7 @@ fun GalaxyMenu(
                 "Caresse (va-et-vient) : il est content, puis amoureux\n" +
                     "Tap : il sursaute. Plein de taps : il se fâche\n" +
                     "Appui long : il rit\n" +
-                    "Double-tap : il te donne l'heure\n" +
+                    "Double-tap : choisir son mode et ses grimaces (et l'heure)\n" +
                     "Secouer : il a le tournis\n" +
                     "Poser à plat ou retourner : il s'endort\n" +
                     "Tourner vite le téléphone : sa tête tourne\n" +

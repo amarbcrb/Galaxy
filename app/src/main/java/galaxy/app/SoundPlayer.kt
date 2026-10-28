@@ -43,6 +43,15 @@ class SoundPlayer {
         }
     }
 
+    /** Robot "speech" for [text]: beeps instead of words. */
+    fun babble(text: String) {
+        executor.execute {
+            val pcm = SoundSynth.babble(text)
+            if (track.playState != AudioTrack.PLAYSTATE_PLAYING) track.play()
+            track.write(pcm, 0, pcm.size)
+        }
+    }
+
     fun pause() {
         executor.execute {
             track.pause()

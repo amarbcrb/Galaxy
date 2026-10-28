@@ -21,6 +21,7 @@ Télécharger le dernier APK : https://github.com/amarbcrb/Galaxy/releases/lates
 | Poser à plat 1 min ou retourner | il s'endort |
 | Tourner vite le téléphone | sa tête tourne, et un tour complet lui donne le tournis |
 | Glisser vers le haut | menu : minuteur, prénom, mode nuit, son, micro, caméra |
+| Tap à deux doigts | il t'écoute (sans fenêtre Google), avec des petites barres qui bougent |
 | Appui de deux doigts pendant 1 s | menu secret pour lui faire faire ce que tu veux |
 
 L'écran suit l'orientation du téléphone (portrait ou paysage).
@@ -36,6 +37,10 @@ L'écran suit l'orientation du téléphone (portrait ou paysage).
   violet »... ou dans le menu.
 - **Suivi du regard** (caméra frontale) : il te suit des yeux et il est content de te voir
   quand tu reviens. Rien n'est affiché ni enregistré.
+
+Galaxy répond avec des bips de robot plutôt qu'avec des mots (réglable dans le menu).
+Quand il est triste, il pleure ; quand il a le tournis, ses yeux tournent en spirale et des étoiles
+tournent autour de sa tête.
 
 Les deux s'arrêtent la nuit et se coupent dans le menu. Ce que Galaxy entend s'affiche en bas de
 l'écran. Si l'écoute continue ne marche pas sur un téléphone, le bouton « Parler à Galaxy » du menu

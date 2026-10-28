@@ -119,7 +119,10 @@ fun GalaxyMenu(
             HourStepper("Fin", settings.nightEndHour) { onSettingsChange(settings.copy(nightEndHour = it)) }
 
             HorizontalDivider()
-            Toggle("Son et voix", settings.soundOn) { onSettingsChange(settings.copy(soundOn = it)) }
+            Toggle("Son", settings.soundOn) { onSettingsChange(settings.copy(soundOn = it)) }
+            Toggle("Parler avec des mots (sinon bips de robot)", settings.speakWords) {
+                onSettingsChange(settings.copy(speakWords = it))
+            }
             Toggle("Commandes vocales (micro)", settings.voiceOn) { onSettingsChange(settings.copy(voiceOn = it)) }
             if (settings.voiceOn) {
                 Text(
@@ -140,6 +143,7 @@ fun GalaxyMenu(
                     "Secouer : il a le tournis\n" +
                     "Poser à plat ou retourner : il s'endort\n" +
                     "Tourner vite le téléphone : sa tête tourne\n" +
+                    "Tap à deux doigts : il t'écoute\n" +
                     "Glisser vers le haut : ce menu",
                 style = MaterialTheme.typography.bodyMedium,
             )

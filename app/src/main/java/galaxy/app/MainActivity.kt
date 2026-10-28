@@ -29,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,7 +43,6 @@ import androidx.core.view.WindowInsetsControllerCompat
 import galaxy.core.brain.Overlay
 import galaxy.core.face.Expressions
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity(), SensorEventListener {
     private lateinit var controller: GalaxyController
@@ -171,23 +169,21 @@ private fun GalaxyScreen(controller: GalaxyController) {
             ?.takeIf { it.isNotEmpty() }
             ?.let { controller.onPhrases(it) }
     }
-    val scope = rememberCoroutineScope()
-    val onTalk: () -> Unit = {
-        controller.menuOpen = false
-        controller.secretMenuOpen = false
+    // Fallback when listening without a dialog cannot work on this phone: Android's speech dialog.
+    LaunchedEffect(controller.speechDialogRequests) {
+        if (controller.speechDialogRequests == 0) return@LaunchedEffect
         controller.stopListening()
-        scope.launch {
-            // Give the microphone a moment to be released before the dialog opens.
-            delay(MIC_RELEASE_MILLIS)
-            try {
-                talk.launch(
-                    VoiceListener.recognizerIntent(context).putExtra(RecognizerIntent.EXTRA_PROMPT, "Parle à Galaxy"),
-                )
-            } catch (e: ActivityNotFoundException) {
-                controller.showSubtitle("Pas de reconnaissance vocale sur ce téléphone")
-            }
+        // Give the microphone a moment to be released before the dialog opens.
+        delay(MIC_RELEASE_MILLIS)
+        try {
+            talk.launch(
+                VoiceListener.recognizerIntent(context).putExtra(RecognizerIntent.EXTRA_PROMPT, "Parle à Galaxy"),
+            )
+        } catch (e: ActivityNotFoundException) {
+            controller.showSubtitle("Pas de reconnaissance vocale sur ce téléphone")
         }
     }
+    val onTalk: () -> Unit = controller::listen
 
     val state = controller.state
     val eyeColor = controller.settings.eyeColor
@@ -225,6 +221,9 @@ private fun GalaxyScreen(controller: GalaxyController) {
             Overlay.NONE -> Face(state.emotion, controller.look, head = { controller.head }, eyeColor = eyeColor)
         }
         state.crack?.let { CrackOverlay(it) }
+        if (controller.listening) {
+            ListeningBars(color, Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp))
+        }
         controller.heard?.let { heard ->
             Text(
                 "« $heard »",

@@ -24,4 +24,16 @@ class SoundSynthTest {
             assertTrue(abs(pcm.last().toInt()) < 2_000, "$cue end")
         }
     }
+
+    @Test
+    fun babbleIsRepeatableAndFollowsTheText() {
+        val a = SoundSynth.babble("Bonjour Amar !")
+        assertTrue(a.contentEquals(SoundSynth.babble("Bonjour Amar !")))
+        assertTrue(a.isNotEmpty() && a.maxOf { abs(it.toInt()) } > 3_000)
+        val short = SoundSynth.babbleTones("Oui").count { it.volume > 0f }
+        val long = SoundSynth.babbleTones("Il est quatorze heures trente deux et sept secondes").count { it.volume > 0f }
+        assertTrue(long > short)
+        val question = SoundSynth.babbleTones("Tu as faim ?").last { it.volume > 0f }
+        assertTrue(question.endHz > question.startHz)
+    }
 }

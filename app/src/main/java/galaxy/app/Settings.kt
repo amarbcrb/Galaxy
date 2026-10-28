@@ -11,6 +11,8 @@ data class UserSettings(
     val nightStartHour: Int = 22,
     val nightEndHour: Int = 7,
     val soundOn: Boolean = true,
+    /** Say real words; otherwise Galaxy answers with robot beeps. */
+    val speakWords: Boolean = false,
     val voiceOn: Boolean = true,
     val cameraOn: Boolean = true,
     /** Chosen eye color (ARGB), or null for Galaxy's cyan. */
@@ -30,6 +32,7 @@ class SettingsStore(context: Context) {
         nightStartHour = prefs.getInt(NIGHT_START, 22),
         nightEndHour = prefs.getInt(NIGHT_END, 7),
         soundOn = prefs.getBoolean(SOUND_ON, true),
+        speakWords = prefs.getBoolean(SPEAK_WORDS, false),
         voiceOn = prefs.getBoolean(VOICE_ON, true),
         cameraOn = prefs.getBoolean(CAMERA_ON, true),
         eyeColor = prefs.getLong(EYE_COLOR, 0L).takeIf { it != 0L },
@@ -43,6 +46,7 @@ class SettingsStore(context: Context) {
             .putInt(NIGHT_START, settings.nightStartHour)
             .putInt(NIGHT_END, settings.nightEndHour)
             .putBoolean(SOUND_ON, settings.soundOn)
+            .putBoolean(SPEAK_WORDS, settings.speakWords)
             .putBoolean(VOICE_ON, settings.voiceOn)
             .putBoolean(CAMERA_ON, settings.cameraOn)
             .putLong(EYE_COLOR, settings.eyeColor ?: 0L)
@@ -56,6 +60,7 @@ class SettingsStore(context: Context) {
         const val NIGHT_START = "night_start"
         const val NIGHT_END = "night_end"
         const val SOUND_ON = "sound_on"
+        const val SPEAK_WORDS = "speak_words"
         const val VOICE_ON = "voice_on"
         const val CAMERA_ON = "camera_on"
         const val EYE_COLOR = "eye_color"

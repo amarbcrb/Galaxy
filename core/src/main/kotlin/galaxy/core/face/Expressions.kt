@@ -34,7 +34,7 @@ object Expressions {
         Emotion.SAD -> both(base.copy(lidTop = 0.30f, lidAngle = -18f, offsetY = 0.04f), 0xFF3D6BFFL)
         Emotion.LOVE -> both(base.copy(width = 0.40f, height = 0.38f, heart = 1f), 0xFFFF6FB5L)
         Emotion.DIZZY -> both(
-            base.copy(width = 0.30f, height = 0.30f, topRound = 1f, bottomRound = 1f),
+            base.copy(width = 0.34f, height = 0.34f, topRound = 1f, bottomRound = 1f, spiral = 1f),
             0xFFFF9F43L,
         )
         Emotion.SLEEPY -> both(base.copy(lidTop = 0.55f), 0xFF8A6CFFL)

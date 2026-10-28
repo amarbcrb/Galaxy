@@ -2,6 +2,8 @@ package galaxy.app
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
@@ -47,7 +49,22 @@ class GalaxyController(
     private val speaker = Speaker(activity)
     private val sounds = SoundPlayer()
     private val haptics = Haptics(activity)
-    private val voice = VoiceListener(activity, ::onPhrases, onStatus = { voiceStatus = it }, onErrorCode = { voiceError = it })
+    private val voice = VoiceListener(
+        activity,
+        continuous = true,
+        onPhrases = ::onPhrases,
+        onStatus = { voiceStatus = it },
+        onErrorCode = { voiceError = it },
+    )
+
+    /** Push-to-talk: listens once, without Android's dialog. */
+    private val ear = VoiceListener(
+        activity,
+        continuous = false,
+        onPhrases = ::onPhrases,
+        onStatus = ::onEarStatus,
+        onErrorCode = { voiceError = it },
+    )
     private val camera = FaceCamera(activity, ::onFace)
 
     var state by mutableStateOf(BrainState())
@@ -65,6 +82,14 @@ class GalaxyController(
     var voiceError by mutableStateOf<Int?>(null)
         private set
 
+    /** Galaxy is listening after a two-finger tap. */
+    var listening by mutableStateOf(false)
+        private set
+
+    /** Bumped when push-to-talk cannot work here, so the screen opens Android's speech dialog instead. */
+    var speechDialogRequests by mutableStateOf(0)
+        private set
+
     /** The last thing Galaxy heard, shown briefly as a subtitle. */
     var heard by mutableStateOf<String?>(null)
         private set
@@ -79,6 +104,7 @@ class GalaxyController(
     private var rotation = 0
     private var resumed = false
     private var cameraRunning = false
+    private val handler = Handler(Looper.getMainLooper())
     private var wasNight = false
 
     init {
@@ -139,6 +165,10 @@ class GalaxyController(
                 menuOpen = true
                 Event.MenuOpened
             }
+            Gesture.TWO_FINGER_TAP -> {
+                listen()
+                return
+            }
             Gesture.TWO_FINGER_HOLD -> {
                 secretMenuOpen = true
                 Event.MenuOpened
@@ -176,6 +206,32 @@ class GalaxyController(
 
     private fun onFace(face: Look?) {
         if (presence.onFrame(face, SystemClock.elapsedRealtime())) send(Event.FaceSeen)
+    }
+
+    /** Push-to-talk: Galaxy perks up, beeps and listens to one phrase. */
+    fun listen() {
+        if (listening) return
+        menuOpen = false
+        secretMenuOpen = false
+        voice.stop()
+        listening = true
+        send(Event.Act(Emotion.CURIOUS))
+        // Let the continuous listener release the microphone, and the beep finish, first.
+        handler.postDelayed({ if (listening) ear.start() }, MIC_RELEASE_MILLIS)
+    }
+
+    private fun onEarStatus(status: VoiceStatus) {
+        when (status) {
+            VoiceStatus.OFF -> {
+                listening = false
+                updateFeatures()
+            }
+            VoiceStatus.UNAVAILABLE, VoiceStatus.NO_PERMISSION -> {
+                listening = false
+                speechDialogRequests++
+            }
+            VoiceStatus.STARTING, VoiceStatus.LISTENING -> Unit
+        }
     }
 
     /**
@@ -254,7 +310,10 @@ class GalaxyController(
     private fun updateFeatures() {
         // Galaxy stops listening and watching at night, while he sleeps.
         val awakeHours = resumed && !state.night
-        if (awakeHours && settings.voiceOn && hasPermission(Manifest.permission.RECORD_AUDIO)) voice.start() else voice.stop()
+        if (listening) {
+            // Push-to-talk owns the microphone for now.
+            voice.stop()
+        } else if (awakeHours && settings.voiceOn && hasPermission(Manifest.permission.RECORD_AUDIO)) voice.start() else voice.stop()
 
         val wantCamera = awakeHours && settings.cameraOn && hasPermission(Manifest.permission.CAMERA)
         if (wantCamera != cameraRunning) {
@@ -278,6 +337,7 @@ class GalaxyController(
 
     fun onPause() {
         resumed = false
+        ear.stop()
         finger = null
         updateFeatures()
         speaker.stop()
@@ -286,6 +346,7 @@ class GalaxyController(
 
     fun onDestroy() {
         voice.stop()
+        ear.stop()
         camera.release()
         speaker.shutdown()
         sounds.release()
@@ -294,6 +355,7 @@ class GalaxyController(
     private companion object {
         const val SUBTITLE_MILLIS = 3_000L
         const val REPEAT_MILLIS = 2_500L
+        const val MIC_RELEASE_MILLIS = 400L
     }
 
     private fun send(event: Event) {
@@ -304,7 +366,9 @@ class GalaxyController(
         state = brain.state
         for (action in actions) {
             when (action) {
-                is Action.Speak -> if (settings.soundOn) speaker.speak(action.text)
+                is Action.Speak -> if (settings.soundOn) {
+                    if (settings.speakWords) speaker.speak(action.text) else sounds.babble(action.text)
+                }
                 is Action.PlaySound -> if (settings.soundOn) sounds.play(action.cue)
                 is Action.Vibrate -> haptics.vibrate(action.pattern)
             }

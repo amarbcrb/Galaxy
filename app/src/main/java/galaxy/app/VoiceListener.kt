@@ -14,11 +14,14 @@ import android.speech.SpeechRecognizer
 enum class VoiceStatus { OFF, STARTING, LISTENING, UNAVAILABLE, NO_PERMISSION }
 
 /**
- * Listens continuously for French speech with the phone's speech recognizer and hands every
- * phrase heard (with its alternatives, partial or final) to [onPhrases]. Main thread only.
+ * Listens for French speech with the phone's speech recognizer, without any dialog, and hands
+ * every phrase heard (with its alternatives, partial or final) to [onPhrases]. When [continuous]
+ * it listens again and again; otherwise it stops after one phrase (or silence) and reports
+ * [VoiceStatus.OFF]. Main thread only.
  */
 class VoiceListener(
     private val context: Context,
+    private val continuous: Boolean,
     private val onPhrases: (phrases: List<String>, final: Boolean) -> Unit,
     private val onStatus: (VoiceStatus) -> Unit,
     /** The last recognizer error code, for the menu, or null once it hears again. */
@@ -124,7 +127,7 @@ class VoiceListener(
             ?.filter { it.isNotBlank() }
             ?.takeIf { it.isNotEmpty() }
             ?.let { onPhrases(it, true) }
-        restart(NEXT_MILLIS)
+        if (continuous) restart(NEXT_MILLIS) else stop()
     }
 
     override fun onError(error: Int) {
@@ -137,7 +140,7 @@ class VoiceListener(
             // Nobody spoke, or nothing understood: just listen again.
             SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> {
                 failures = 0
-                restart(NEXT_MILLIS)
+                if (continuous) restart(NEXT_MILLIS) else stop()
             }
             else -> recover()
         }

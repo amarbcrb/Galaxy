@@ -55,13 +55,38 @@ object SoundSynth {
         )
     }
 
-    fun render(cue: SoundCue, sampleRate: Int = SAMPLE_RATE): ShortArray {
-        val tones = tones(cue)
+    /**
+     * Robot "speech": a chirp per syllable instead of words, rising at the end of a question.
+     * The same text always babbles the same way.
+     */
+    fun babbleTones(text: String): List<Tone> {
+        val random = Random(text.hashCode())
+        val syllables = text.count { it.lowercaseChar() in "aeiouyàâéèêëîïôûù" }.coerceIn(2, 14)
+        val question = text.trimEnd().endsWith("?")
+        val tones = mutableListOf<Tone>()
+        var pitch = 700f + random.nextFloat() * 500f
+        for (i in 0 until syllables) {
+            val next = (pitch + random.nextFloat() * 500f - 250f).coerceIn(450f, 1700f)
+            val end = if (question && i == syllables - 1) next * 1.5f else next
+            tones += Tone(pitch, end, 60 + random.nextInt(70), 0.45f)
+            if (random.nextFloat() < 0.35f) tones += pause(25 + random.nextInt(40))
+            pitch = next
+        }
+        return tones
+    }
+
+    fun babble(text: String, sampleRate: Int = SAMPLE_RATE): ShortArray =
+        render(babbleTones(text), text.hashCode(), sampleRate)
+
+    fun render(cue: SoundCue, sampleRate: Int = SAMPLE_RATE): ShortArray =
+        render(tones(cue), cue.ordinal, sampleRate)
+
+    private fun render(tones: List<Tone>, seed: Int, sampleRate: Int): ShortArray {
         val total = tones.sumOf { samplesFor(it, sampleRate) }
         val out = ShortArray(total)
         var index = 0
         var phase = 0.0
-        val random = Random(cue.ordinal)
+        val random = Random(seed)
         for (tone in tones) {
             val n = samplesFor(tone, sampleRate)
             val attack = min(n / 4, sampleRate * 5 / 1000).coerceAtLeast(1)

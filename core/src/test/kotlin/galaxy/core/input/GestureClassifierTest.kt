@@ -110,4 +110,12 @@ class GestureClassifierTest {
         assertTrue(g.onHold(1_000).isEmpty())
         assertTrue(g.onUp(500f, 500f, 1_100).isEmpty())
     }
+
+    @Test
+    fun quickTwoFingerTapListens() {
+        g.onDown(500f, 500f, 0, w, h)
+        g.onPointerCount(2, 30)
+        assertTrue(g.onHold(200).isEmpty())
+        assertEquals(listOf(Gesture.TWO_FINGER_TAP), g.onUp(505f, 500f, 250))
+    }
 }

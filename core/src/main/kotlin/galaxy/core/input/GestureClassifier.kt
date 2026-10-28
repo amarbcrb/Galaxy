@@ -5,7 +5,7 @@ import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sign
 
-enum class Gesture { TAP, DOUBLE_TAP, LONG_PRESS, PET, SWIPE_UP, TWO_FINGER_HOLD }
+enum class Gesture { TAP, DOUBLE_TAP, LONG_PRESS, PET, SWIPE_UP, TWO_FINGER_TAP, TWO_FINGER_HOLD }
 
 /**
  * Turns raw touch points into gestures. Positions are those of the first finger.
@@ -100,7 +100,10 @@ class GestureClassifier(
         if (!down) return emptyList()
         val out = onMove(x, y, timeMillis).toMutableList()
         down = false
-        if (multiTouch) return emptyList()
+        if (multiTouch) {
+            val quick = !twoFingerFired && timeMillis - startTime < twoFingerMillis && !moved
+            return if (quick) listOf(Gesture.TWO_FINGER_TAP) else emptyList()
+        }
 
         val rise = startY - y
         if (rise > SWIPE_UP * minDim && abs(x - startX) < rise && strokeY.reversals == 0) {
